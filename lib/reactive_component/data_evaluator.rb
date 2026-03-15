@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require "action_view"
+require "action_view/record_identifier"
+
 module ReactiveComponent
   class DataEvaluator
     include ActionView::Helpers::DateHelper
@@ -8,8 +11,18 @@ module ReactiveComponent
     include ActionView::Helpers::TagHelper
     include ActionView::Helpers::OutputSafetyHelper
     include ActionView::RecordIdentifier
-    include Rails.application.routes.url_helpers
     include ActionView::Helpers::UrlHelper
+
+    def self.inherited(subclass)
+      super
+      if defined?(Rails) && Rails.application
+        subclass.include Rails.application.routes.url_helpers
+      end
+    end
+
+    def self.finalize!
+      include Rails.application.routes.url_helpers if defined?(Rails) && Rails.application
+    end
 
     def initialize(model_attr, record, component_class: nil, **kwargs)
       instance_variable_set(:"@#{model_attr}", record) if model_attr
@@ -40,7 +53,7 @@ module ReactiveComponent
     end
 
     def render(renderable, &block)
-      renderer = ReactiveComponent.renderer || ApplicationController
+      renderer = ReactiveComponent.renderer || ActionController::Base
       renderer.render(renderable, layout: false)
     end
 

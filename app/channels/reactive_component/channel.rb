@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module ReactiveComponent
-  class Channel < ApplicationCable::Channel
+  class Channel < ActionCable::Channel::Base
     mattr_accessor :compress, default: false
 
     class_attribute :filter_callback, default: nil

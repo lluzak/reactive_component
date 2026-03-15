@@ -198,7 +198,7 @@ module ReactiveComponent
     end
 
     def wrap_debug_return(body, label)
-      wrapper = "return '<div data-live-debug=\"#{label}' + (data.dom_id ? ' #' + data.dom_id : '') + '\" class=\"live-debug-wrapper\">' + _buf + '</div>';"
+      wrapper = "return '<div data-reactive-debug=\"#{label}' + (data.dom_id ? ' #' + data.dom_id : '') + '\" class=\"reactive-debug-wrapper\">' + _buf + '</div>';"
       body.sub(/return _buf\s*\z/, wrapper)
     end
 

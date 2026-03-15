@@ -1,0 +1,6 @@
+<div class="message-row">
+  <span class="sender"><%= @message.sender.name %></span>
+  <span class="subject"><%= @message.subject %></span>
+  <span class="time"><%= time_ago_in_words(@message.created_at) %></span>
+  <span class="body"><%= truncate(@message.body, length: 50) %></span>
+</div>
