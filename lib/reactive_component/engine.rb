@@ -5,5 +5,15 @@
 module ReactiveComponent
   class Engine < ::Rails::Engine
     isolate_namespace ReactiveComponent
+
+    initializer "reactive_component.importmap", before: "importmap" do |app|
+      if defined?(Importmap)
+        app.config.importmap.paths <<
+          Engine.root.join("config/importmap.rb")
+
+        app.config.assets.paths <<
+          Engine.root.join("app/javascript")
+      end
+    end
   end
 end
