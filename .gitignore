@@ -8,5 +8,5 @@
 /tmp/
 *.gem
 Gemfile.lock
-gemfiles/
+gemfiles/*.lock
 /log/
