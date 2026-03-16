@@ -1,4 +1,4 @@
-ActiveRecord::Schema[8.1].define(version: 2026_03_16_000001) do
+ActiveRecord::Schema.define(version: 2026_03_16_000001) do
   create_table :contacts do |t|
     t.string :name
     t.string :email
