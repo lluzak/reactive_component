@@ -1,10 +1,7 @@
 ---
-layout: default
 title: Quick Start
-nav_order: 3
+description: Build your first reactive component from scratch
 ---
-
-# Quick Start
 
 This guide walks you through building your first reactive component from scratch.
 

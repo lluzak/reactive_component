@@ -1,0 +1,79 @@
+---
+title: ReactiveComponent
+description: Reactive server-rendered components for Rails via ActionCable
+template: splash
+hero:
+  tagline: Reactive server-rendered components for Rails via ActionCable. Build ViewComponent components that automatically re-render on the client when data changes — no full page reloads.
+  actions:
+    - text: Get started
+      link: /reactive_component/quick-start/
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/lluzak/reactive_component
+      variant: minimal
+      icon: external
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Key Features
+
+<CardGrid>
+  <Card title="Declarative DSL" icon="pencil">
+    Define reactive behavior with `subscribes_to`, `broadcasts`, `live_action`, and `client_state` right inside your component class.
+  </Card>
+  <Card title="Automatic ERB-to-JS" icon="seti:javascript">
+    Your existing ERB templates are compiled to JavaScript render functions at boot time via ruby2js. No separate client-side templates.
+  </Card>
+  <Card title="ActionCable Live Updates" icon="rocket">
+    When a model changes on the server, broadcasts flow through ActionCable and the client re-renders the component instantly.
+  </Card>
+  <Card title="Secure Server Actions" icon="approve-check-circle">
+    Trigger server-side logic from the client using `live_action`. Actions are verified with signed tokens.
+  </Card>
+</CardGrid>
+
+## Quick Example
+
+```ruby
+class MessageRowComponent < ApplicationComponent
+  include ReactiveComponent
+
+  subscribes_to :message
+  broadcasts stream: ->(message) { [message.recipient, :messages] },
+             prepend_target: "message_items"
+  live_action :toggle_star
+  client_state :selected, default: false
+
+  def initialize(message:, selected: false)
+    @message = message
+    @selected = selected
+  end
+
+  private
+
+  def toggle_star
+    @message.toggle_starred!
+  end
+end
+```
+
+```erb
+<div class="message-row <%= "selected" if @selected %>">
+  <span class="sender"><%= @message.sender.name %></span>
+  <span class="subject"><%= @message.subject %></span>
+  <span class="time"><%= time_ago_in_words(@message.created_at) %></span>
+  <button data-action="click->reactive-renderer#action"
+          data-reactive-action="toggle_star">
+    <%= @message.starred? ? "Unstar" : "Star" %>
+  </button>
+</div>
+```
+
+Render it like any ViewComponent:
+
+```erb
+<%= render MessageRowComponent.new(message: @message) %>
+```
+
+When the message is updated anywhere in the system, the component re-renders on every connected client automatically.

@@ -1,10 +1,7 @@
 ---
-layout: default
 title: Installation
-nav_order: 2
+description: How to install ReactiveComponent in your Rails application
 ---
-
-# Installation
 
 ## 1. Add the gems
 
@@ -14,12 +11,13 @@ Add ReactiveComponent and its dependencies to your `Gemfile`:
 gem "reactive_component"
 ```
 
-{: .warning }
+:::caution
 ruby2js must be installed from the GitHub HEAD until the required ERB compilation features are released:
 
 ```ruby
 gem "ruby2js", github: "ruby2js/ruby2js"
 ```
+:::
 
 Then install:
 

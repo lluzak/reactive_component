@@ -1,10 +1,7 @@
 ---
-layout: default
 title: Configuration
-nav_order: 4
+description: Configure ReactiveComponent options for your Rails application
 ---
-
-# Configuration
 
 ReactiveComponent exposes a handful of configuration options. You can set them in an initializer (e.g. `config/initializers/reactive_component.rb`).
 

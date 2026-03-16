@@ -1,0 +1,100 @@
+/* === Deep Purple / Violet Warm Elegant Theme === */
+
+/* --- Light mode --- */
+:root {
+  /* Purple accent palette */
+  --sl-color-accent-low: #f3eeff;
+  --sl-color-accent: #7c3aed;
+  --sl-color-accent-high: #4c1d95;
+
+  /* Warm background tones */
+  --sl-color-bg-nav: #faf8ff;
+  --sl-color-bg-sidebar: #faf8ff;
+  --sl-color-bg: #fffffe;
+  --sl-color-bg-inline-code: #f5f0ff;
+
+  /* Text - warm dark */
+  --sl-color-text: #1e1b2e;
+  --sl-color-text-accent: #6d28d9;
+
+  /* Hairline borders */
+  --sl-color-hairline-light: #ede9fe;
+  --sl-color-hairline: #ddd6fe;
+
+  /* Typography */
+  --sl-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --sl-font-system-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', 'Fira Code', monospace;
+
+  /* Refined sizing */
+  --sl-text-base: 1rem;
+  --sl-line-height: 1.7;
+  --sl-content-width: 52rem;
+}
+
+/* --- Dark mode --- */
+:root[data-theme='dark'] {
+  --sl-color-accent-low: #2e1065;
+  --sl-color-accent: #a78bfa;
+  --sl-color-accent-high: #e0d4ff;
+
+  --sl-color-bg-nav: #110e1f;
+  --sl-color-bg-sidebar: #110e1f;
+  --sl-color-bg: #0f0d1a;
+  --sl-color-bg-inline-code: #1e1638;
+
+  --sl-color-text: #e8e4f0;
+  --sl-color-text-accent: #c4b5fd;
+
+  --sl-color-hairline-light: #2e2650;
+  --sl-color-hairline: #3b3166;
+}
+
+/* --- Refined typography --- */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* --- Elegant link styling --- */
+.sl-markdown-content a:not([class]) {
+  text-decoration-color: var(--sl-color-accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+  transition: text-decoration-color 0.2s ease;
+}
+
+.sl-markdown-content a:not([class]):hover {
+  text-decoration-thickness: 2px;
+}
+
+/* --- Code blocks --- */
+.expressive-code {
+  --ec-brdRad: 0.5rem;
+}
+
+/* --- Aside / callout refinement --- */
+.starlight-aside {
+  border-radius: 0.5rem;
+}
+
+/* --- Smooth page transitions --- */
+starlight-content {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Hero section polish --- */
+.hero {
+  padding-block: 4rem;
+}
+
+.hero .tagline {
+  font-size: 1.25rem;
+  line-height: 1.6;
+  color: var(--sl-color-text);
+  opacity: 0.85;
+}

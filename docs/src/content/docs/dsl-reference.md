@@ -1,10 +1,7 @@
 ---
-layout: default
 title: DSL Reference
-nav_order: 5
+description: Complete reference for ReactiveComponent DSL methods
 ---
-
-# DSL Reference
 
 All DSL methods are available as class methods after you `include ReactiveComponent` in your ViewComponent.
 
