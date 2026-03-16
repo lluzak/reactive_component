@@ -1,5 +1,12 @@
-<div class="labels">
+<div class="flex items-center gap-2 px-6 py-2 border-b border-gray-200 overflow-x-auto">
+  <span class="text-xs font-medium text-gray-500 mr-1 shrink-0">Labels:</span>
   <% @labels.each do |label| %>
-    <span class="label"><%= label.name %></span>
+    <button type="button"
+      data-action="click->reactive-renderer#performAction"
+      data-reactive-renderer-action-param="<%= label_action(@message, label) %>"
+      data-reactive-renderer-label-id-param="<%= label.id %>"
+      class="inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium cursor-pointer shrink-0 <%= label_css(@message, label) %>">
+      <%= label_text(@message, label) %>
+    </button>
   <% end %>
 </div>

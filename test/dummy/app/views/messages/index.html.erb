@@ -1,6 +1,13 @@
-<h1>Messages</h1>
-<div id="message_items">
-  <% @messages.each do |message| %>
-    <%= render MessageRowComponent.new(message: message) %>
-  <% end %>
+<div class="min-h-full">
+  <div class="max-w-4xl mx-auto py-6">
+    <div class="flex items-center justify-between px-4 mb-4">
+      <h1 class="text-2xl font-bold text-gray-900">Inbox</h1>
+      <span class="text-sm text-gray-500"><%= @messages.count %> messages</span>
+    </div>
+    <div class="bg-white rounded-lg shadow" id="message_items">
+      <% @messages.each do |message| %>
+        <%= render MessageRowComponent.new(message: message) %>
+      <% end %>
+    </div>
+  </div>
 </div>
