@@ -16,7 +16,6 @@ module Dummy
   class Application < Rails::Application
     config.root = File.expand_path("..", __dir__)
     config.eager_load = false
-    config.active_record.maintain_test_schema = false
     config.hosts.clear
     config.secret_key_base = "test_secret_key_base_for_reactive_component"
   end

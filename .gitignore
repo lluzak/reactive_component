@@ -12,3 +12,5 @@ Gemfile.lock
 gemfiles/*.lock
 /log/
 test/dummy/log/
+test/dummy/db/*.sqlite3
+test/dummy/db/*.sqlite3-*

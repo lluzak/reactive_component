@@ -1,0 +1,6 @@
+<h1>Messages</h1>
+<div id="message_items">
+  <% @messages.each do |message| %>
+    <%= render MessageRowComponent.new(message: message) %>
+  <% end %>
+</div>

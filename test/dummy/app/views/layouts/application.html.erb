@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ReactiveComponent Demo</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <%= csrf_meta_tags %>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 2rem; }
+    .message-row { padding: 1rem; border-bottom: 1px solid #eee; }
+    .message-detail { padding: 1rem; }
+    .labels { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+    .label { padding: 0.25rem 0.5rem; background: #e5e7eb; border-radius: 0.25rem; font-size: 0.875rem; }
+    .sender { font-weight: bold; margin-right: 1rem; }
+    .subject { margin-right: 1rem; }
+    .time { color: #6b7280; font-size: 0.875rem; }
+  </style>
+</head>
+<body>
+  <%= yield %>
+</body>
+</html>
