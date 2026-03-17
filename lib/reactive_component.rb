@@ -19,6 +19,7 @@ module ReactiveComponent
 
   included do
     class_attribute :_live_model_attr, instance_writer: false
+    class_attribute :_live_model_class_name, instance_writer: false
     class_attribute :_live_actions, instance_writer: false, default: {}
     class_attribute :_broadcast_config, instance_writer: false
     class_attribute :_client_state_fields, instance_writer: false, default: {}
@@ -52,8 +53,13 @@ module ReactiveComponent
   end
 
   class_methods do
-    def subscribes_to(attr_name)
-      self._live_model_attr = attr_name
+    def subscribes_to(attr_name, class_name: nil)
+      self._live_model_attr = attr_name.to_sym
+      self._live_model_class_name = class_name || attr_name.to_s.classify
+    end
+
+    def live_model_class
+      _live_model_class_name&.constantize
     end
 
     def broadcasts(stream:, prepend_target: nil)

@@ -23,7 +23,7 @@ module ReactiveComponent
       component_class = data["component"].constantize
       params = data["params"] || {}
 
-      model_class = component_class.live_model_attr.to_s.classify.constantize
+      model_class = component_class.live_model_class
       record_id = data["record_id"] || params.delete("record_id")
       record = model_class.find_by(id: record_id)
       return unless record

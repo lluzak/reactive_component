@@ -18,7 +18,7 @@ end
 
 ---
 
-## `subscribes_to(attr_name)`
+## `subscribes_to(attr_name, class_name: nil)`
 
 Declares which instance variable holds the model record that drives the component.
 
@@ -26,11 +26,13 @@ Declares which instance variable holds the model record that drives the componen
 
 | Name | Type | Description |
 |:-----|:-----|:------------|
-| `attr_name` | `Symbol` | The name of the instance variable (without the `@` prefix) |
+| `attr_name` | `Symbol` | The name of the instance variable (without the `@` prefix). |
+| `class_name:` | `String` or `nil` | Optional explicit model class name. Use this when the class name cannot be inferred from the attribute name (e.g. namespaced models). |
 
-**Example:**
+**Examples:**
 
 ```ruby
+# Simple model — @comment ivar, resolves to Comment
 class CommentComponent < ApplicationComponent
   include ReactiveComponent
 
@@ -42,10 +44,23 @@ class CommentComponent < ApplicationComponent
 end
 ```
 
+```ruby
+# Namespaced model — @notification ivar, resolves to Inbox::Notification
+class NotificationRowComponent < ApplicationComponent
+  include ReactiveComponent
+
+  subscribes_to :notification, class_name: "Inbox::Notification"
+
+  def initialize(notification:)
+    @notification = notification
+  end
+end
+```
+
 The framework uses this to:
 - Look up the record for data extraction and re-rendering
 - Generate DOM IDs for the component wrapper
-- Resolve the record when executing server actions
+- Resolve the model class when handling channel updates and executing server actions
 
 ---
 
