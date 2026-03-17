@@ -11,8 +11,10 @@ module ReactiveComponent
         app.config.importmap.paths <<
           Engine.root.join("config/importmap.rb")
 
-        app.config.assets.paths <<
-          Engine.root.join("app/javascript")
+        if app.config.respond_to?(:assets)
+          app.config.assets.paths <<
+            Engine.root.join("app/javascript")
+        end
       end
     end
   end

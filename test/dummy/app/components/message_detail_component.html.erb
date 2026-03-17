@@ -32,7 +32,7 @@
 </div>
 <%# Labels %>
 <div data-controller="reactive-renderer"
-     data-reactive-renderer-action-url-value="<%= reactive_component.reactive_component_actions_path %>"
+     data-reactive-renderer-action-url-value="<%= ReactiveComponent::Engine.routes.url_helpers.reactive_component_actions_path %>"
      data-reactive-renderer-action-token-value="<%= MessageLabelsComponent.live_action_token(@message) %>">
   <%= render MessageLabelsComponent.new(message: @message) %>
 </div>

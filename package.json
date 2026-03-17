@@ -1,0 +1,11 @@
+{
+  "private": true,
+  "scripts": {
+    "test:js": "vitest run",
+    "test:js:watch": "vitest"
+  },
+  "devDependencies": {
+    "jsdom": "^29.0.0",
+    "vitest": "^3.0.0"
+  }
+}

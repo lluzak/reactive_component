@@ -14,3 +14,4 @@ gemfiles/*.lock
 test/dummy/log/
 test/dummy/db/*.sqlite3
 test/dummy/db/*.sqlite3-*
+test/dummy/db/test.sqlite3

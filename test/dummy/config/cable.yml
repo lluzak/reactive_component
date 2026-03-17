@@ -1,2 +1,2 @@
 test:
-  adapter: test
+  adapter: async
