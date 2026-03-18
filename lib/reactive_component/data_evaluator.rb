@@ -66,7 +66,6 @@ module ReactiveComponent
       return [] unless collection
 
       block_var = computed[:block_var]
-      eval_context = self
 
       lambdas = {}
       nested = {}

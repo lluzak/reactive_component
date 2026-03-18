@@ -1,5 +1,16 @@
 # frozen_string_literal: true
 
+# Suppress Ruby warnings originating from third-party gems (e.g. ruby2js circular requires)
+module Warning
+  GEM_HOME = Gem.paths.home.freeze
+
+  def self.warn(msg, category: nil, **kwargs)
+    return if msg.include?(GEM_HOME)
+
+    super
+  end
+end
+
 ENV["RAILS_ENV"] = "test"
 ENV["RAILS_ROOT"] = File.expand_path("dummy", __dir__)
 
