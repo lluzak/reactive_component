@@ -18,5 +18,9 @@ module Dummy
     config.eager_load = false
     config.hosts.clear
     config.secret_key_base = "test_secret_key_base_for_reactive_component"
+
+    config.after_initialize do
+      ReactiveComponent.renderer = ApplicationController
+    end
   end
 end

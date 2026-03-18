@@ -76,8 +76,9 @@ module ReactiveComponent
       target = config&.dig(:prepend_target)
       return unless target
 
-      Channel.broadcast_data(stream, action: :prepend,
-        data: component_class.build_data(record).merge("target" => target))
+      renderer = ReactiveComponent.renderer || ActionController::Base
+      html = renderer.render(component_class.new(component_class.live_model_attr => record), layout: false)
+      Turbo::StreamsChannel.broadcast_prepend_to(*Array(stream), target: target, html: html)
     end
   end
 
