@@ -1,18 +1,20 @@
 # frozen_string_literal: true
 
+require 'set'
+
 module ReactiveComponent
   module Broadcastable
     extend ActiveSupport::Concern
 
     included do
-      class_attribute :reactive_component_classes, instance_writer: false, default: []
+      class_attribute :reactive_component_classes, instance_writer: false, default: Set.new
     end
 
     class_methods do
       def register_reactive_component(component_class)
         return if reactive_component_classes.include?(component_class)
 
-        self.reactive_component_classes = reactive_component_classes + [component_class]
+        self.reactive_component_classes = reactive_component_classes | [component_class]
 
         return if _commit_callbacks.map(&:filter).include?(:_broadcast_reactive_create)
 

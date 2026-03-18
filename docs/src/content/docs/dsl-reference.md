@@ -18,9 +18,9 @@ end
 
 ---
 
-## `subscribes_to(attr_name, class_name: nil)`
+## `subscribes_to(attr_name, class_name: nil, only: %i[create update destroy])`
 
-Declares which instance variable holds the model record that drives the component.
+Declares which instance variable holds the model record that drives the component. Calling this method also **automatically wires the model** — no changes to the model class are needed. ReactiveComponent includes `ReactiveComponent::Broadcastable` on the model and registers `after_create_commit`, `after_update_commit`, and `after_destroy_commit` callbacks that trigger broadcasts.
 
 **Parameters:**
 
@@ -28,6 +28,7 @@ Declares which instance variable holds the model record that drives the componen
 |:-----|:-----|:------------|
 | `attr_name` | `Symbol` | The name of the instance variable (without the `@` prefix). |
 | `class_name:` | `String` or `nil` | Optional explicit model class name. Use this when the class name cannot be inferred from the attribute name (e.g. namespaced models). |
+| `only:` | `Symbol` or `Array<Symbol>` | Limits which lifecycle events trigger a broadcast. Accepts any combination of `:create`, `:update`, `:destroy`. Defaults to all three. |
 
 **Examples:**
 
@@ -57,23 +58,37 @@ class NotificationRowComponent < ApplicationComponent
 end
 ```
 
+```ruby
+# Only re-render on update — ignore creates and destroys
+class OrderStatusComponent < ApplicationComponent
+  include ReactiveComponent
+
+  subscribes_to :order, only: :update
+
+  def initialize(order:)
+    @order = order
+  end
+end
+```
+
 The framework uses this to:
 - Look up the record for data extraction and re-rendering
 - Generate DOM IDs for the component wrapper
 - Resolve the model class when handling channel updates and executing server actions
+- Auto-wire the model with `after_commit` callbacks (idempotent — safe to call from multiple components)
 
 ---
 
 ## `broadcasts(stream:, prepend_target: nil)`
 
-Declares the ActionCable stream that carries updates for this component.
+Declares the ActionCable stream that carries updates for this component. **Optional** — when omitted, the record itself is used as the default stream.
 
 **Parameters:**
 
 | Name | Type | Description |
 |:-----|:-----|:------------|
 | `stream:` | `Proc` or streamable | The stream identifier. Typically a lambda that receives the record and returns a streamable value (an array, string, or ActiveRecord object). |
-| `prepend_target:` | `String` or `nil` | Optional DOM ID of a container element. When set, new records are prepended to this target instead of replacing existing components. |
+| `prepend_target:` | `String` or `nil` | Optional DOM ID of a container element. When set, newly created records are rendered via Turbo Streams and prepended to this target. Requires `ReactiveComponent.renderer` to be configured. |
 
 **Example:**
 
@@ -93,7 +108,7 @@ end
 
 The stream value is signed using `Turbo::StreamsChannel.signed_stream_name` before being sent to the client, preventing unauthorized subscriptions.
 
-When `prepend_target` is provided, newly created records broadcast to the stream will be rendered and prepended to the specified DOM element.
+When `prepend_target` is provided, newly created records are rendered server-side and prepended to the specified DOM element via Turbo Streams. This requires `ReactiveComponent.renderer` to be set (e.g. `ApplicationController`) in your application initializer.
 
 ---
 

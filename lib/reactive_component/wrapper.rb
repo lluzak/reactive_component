@@ -4,7 +4,8 @@ module ReactiveComponent
   module Wrapper
     module_function
 
-    def wrap(component_class, record, inner_html, stream: nil, client_state: nil, strategy: nil, component_name: nil, params: nil, template_id: nil)
+    def wrap(component_class, record, inner_html, stream: nil, client_state: nil, strategy: nil, component_name: nil,
+             params: nil, template_id: nil)
       dom_id_val = component_class.dom_id_for(record)
 
       attrs = [
@@ -30,17 +31,11 @@ module ReactiveComponent
         attrs << %(data-reactive-renderer-data-value="#{ERB::Util.html_escape(initial_data.to_json)}")
       end
 
-      if strategy
-        attrs << %(data-reactive-renderer-strategy-value="#{strategy}")
-      end
+      attrs << %(data-reactive-renderer-strategy-value="#{strategy}") if strategy
 
-      if component_name
-        attrs << %(data-reactive-renderer-component-value="#{component_name}")
-      end
+      attrs << %(data-reactive-renderer-component-value="#{component_name}") if component_name
 
-      if params
-        attrs << %(data-reactive-renderer-params-value="#{ERB::Util.html_escape(params.to_json)}")
-      end
+      attrs << %(data-reactive-renderer-params-value="#{ERB::Util.html_escape(params.to_json)}") if params
 
       if ReactiveComponent.debug
         debug_label = "#{component_class.name.underscore.humanize} ##{dom_id_val}"
@@ -48,7 +43,7 @@ module ReactiveComponent
         attrs << %(class="reactive-debug-wrapper")
       end
 
-      %(<div #{attrs.join(" ")}>#{inner_html}</div>).html_safe
+      %(<div #{attrs.join(' ')}>#{inner_html}</div>).html_safe
     end
 
     def find_stream_for(component_class, record)

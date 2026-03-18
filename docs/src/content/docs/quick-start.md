@@ -31,11 +31,11 @@ class NotificationComponent < ApplicationComponent
 end
 ```
 
-The `subscribes_to :notification` declaration means the component watches `@notification` for changes.
+`subscribes_to :notification` does two things: it tells the framework which ivar holds the record, and it **automatically wires `after_commit` callbacks on the `Notification` model** — no changes to the model are required.
 
 ## 3. Declare the broadcast stream
 
-Use `broadcasts` to specify the ActionCable stream that carries updates for this component. The `stream:` option is typically a lambda that receives the record and returns a streamable identifier:
+Use `broadcasts` to specify which ActionCable stream carries updates for this component. The `stream:` option is a lambda that receives the record and returns a streamable identifier:
 
 ```ruby
 class NotificationComponent < ApplicationComponent
@@ -50,7 +50,7 @@ class NotificationComponent < ApplicationComponent
 end
 ```
 
-When a broadcast is sent to `[user, :notifications]`, every `NotificationComponent` subscribed to that stream will re-render.
+`broadcasts` is optional. When omitted, the record itself is used as the default stream. When a broadcast is sent to `[user, :notifications]`, every `NotificationComponent` subscribed to that stream will re-render.
 
 ## 4. Write the ERB template
 
@@ -89,7 +89,7 @@ The initial render happens server-side as usual. ReactiveComponent wraps each co
 When the underlying model changes, updates flow through the system like this:
 
 1. **Model changes on the server** -- A `Notification` record is created or updated.
-2. **Broadcast** -- Your application broadcasts the change (e.g. via an ActiveRecord callback or an explicit call to `ReactiveComponent::Channel.broadcast_data`).
+2. **Broadcast** -- ReactiveComponent's `after_commit` callbacks (auto-wired by `subscribes_to`) broadcast the change to all relevant components.
 3. **ActionCable delivers the data** -- The broadcast reaches all connected clients subscribed to the matching stream.
 4. **Client re-renders** -- The Stimulus controller receives the new data and runs the compiled JavaScript template to produce fresh HTML, replacing the component's content in the DOM.
 

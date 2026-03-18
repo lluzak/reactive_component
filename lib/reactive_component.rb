@@ -1,14 +1,14 @@
 # frozen_string_literal: true
 
-require "active_support/concern"
+require 'active_support/concern'
 
-require_relative "reactive_component/version"
-require_relative "reactive_component/compiler"
-require_relative "reactive_component/erb_extractor"
-require_relative "reactive_component/data_evaluator"
-require_relative "reactive_component/wrapper"
-require_relative "reactive_component/broadcastable"
-require_relative "reactive_component/engine" if defined?(Rails::Engine)
+require_relative 'reactive_component/version'
+require_relative 'reactive_component/compiler'
+require_relative 'reactive_component/erb_extractor'
+require_relative 'reactive_component/data_evaluator'
+require_relative 'reactive_component/wrapper'
+require_relative 'reactive_component/broadcastable'
+require_relative 'reactive_component/engine' if defined?(Rails::Engine)
 
 module ReactiveComponent
   extend ActiveSupport::Concern
@@ -27,7 +27,7 @@ module ReactiveComponent
     class_attribute :_subscribed_events, instance_writer: false, default: %i[create update destroy]
   end
 
-  def render_in(view_context, &block)
+  def render_in(view_context, &)
     inner_html = super
     return inner_html unless self.class._live_model_attr
     return inner_html if @_skip_live_wrapper
@@ -38,17 +38,18 @@ module ReactiveComponent
     stream = ReactiveComponent::Wrapper.find_stream_for(self.class, record)
 
     client_state = if self.class._client_state_fields.any?
-      kwargs = {}
-      self.class._client_state_fields.each_key do |name|
-        val = instance_variable_get(:"@#{name}")
-        kwargs[name] = val unless val.nil?
-      end
-      self.class.client_state_values(**kwargs)
-    end
+                     kwargs = {}
+                     self.class._client_state_fields.each_key do |name|
+                       val = instance_variable_get(:"@#{name}")
+                       kwargs[name] = val unless val.nil?
+                     end
+                     self.class.client_state_values(**kwargs)
+                   end
 
     extra_opts = respond_to?(:live_wrapper_options, true) ? live_wrapper_options : {}
 
-    wrapped = ReactiveComponent::Wrapper.wrap(self.class, record, inner_html, stream: stream, client_state: client_state, **extra_opts)
+    wrapped = ReactiveComponent::Wrapper.wrap(self.class, record, inner_html, stream: stream, client_state: client_state,
+                                                                              **extra_opts)
 
     template_script = self.class.template_script_tag(view_context)
     template_script ? (template_script + wrapped).html_safe : wrapped
@@ -59,24 +60,24 @@ module ReactiveComponent
 
     config = component_class._broadcast_config
     stream = if config&.dig(:stream)
-      s = config[:stream]
-      s.is_a?(Proc) ? s.call(record) : s
-    else
-      record
-    end
+               s = config[:stream]
+               s.is_a?(Proc) ? s.call(record) : s
+             else
+               record
+             end
 
     case action
     when :update
       Channel.broadcast_data(stream, action: :update, data: component_class.build_data(record))
     when :destroy
       Channel.broadcast_data(stream, action: :destroy, data: {
-        "id" => record.id, "dom_id" => component_class.dom_id_for(record)
-      })
+                               'id' => record.id, 'dom_id' => component_class.dom_id_for(record)
+                             })
     when :create
       target = config&.dig(:prepend_target)
       return unless target
+      return unless (renderer = ReactiveComponent.renderer)
 
-      renderer = ReactiveComponent.renderer || ActionController::Base
       html = renderer.render(component_class.new(component_class.live_model_attr => record), layout: false)
       Turbo::StreamsChannel.broadcast_prepend_to(*Array(stream), target: target, html: html)
     end
@@ -167,10 +168,10 @@ module ReactiveComponent
 
     def encoded_template
       @encoded_template ||= if ReactiveComponent.debug
-        compiled_template_js
-      else
-        Base64.strict_encode64(compiled_template_js)
-      end
+                              compiled_template_js
+                            else
+                              Base64.strict_encode64(compiled_template_js)
+                            end
     end
 
     def template_element_id
@@ -178,7 +179,7 @@ module ReactiveComponent
     end
 
     def template_script_tag(view_context)
-      emitted = (view_context.instance_variable_get(:@_reactive_component_templates) || Set.new)
+      emitted = view_context.instance_variable_get(:@_reactive_component_templates) || Set.new
       return nil if emitted.include?(name)
 
       emitted.add(name)
@@ -205,10 +206,10 @@ module ReactiveComponent
 
       compiled_data[:expressions].each do |var_name, ruby_source|
         data[var_name] = if collection_computed.key?(var_name)
-          evaluator.evaluate_collection(ruby_source, collection_computed[var_name])
-        else
-          evaluator.evaluate(ruby_source)
-        end
+                           evaluator.evaluate_collection(ruby_source, collection_computed[var_name])
+                         else
+                           evaluator.evaluate(ruby_source)
+                         end
       end
       compiled_data[:simple_ivars].each do |ivar_name|
         data[ivar_name] = kwargs[ivar_name.to_sym] if kwargs.key?(ivar_name.to_sym)
@@ -223,10 +224,10 @@ module ReactiveComponent
 
       compiled_data[:expressions].each do |var_name, ruby_source|
         data[var_name] = if collection_computed.key?(var_name)
-          evaluator.evaluate_collection(ruby_source, collection_computed[var_name])
-        else
-          evaluator.evaluate(ruby_source)
-        end
+                           evaluator.evaluate_collection(ruby_source, collection_computed[var_name])
+                         else
+                           evaluator.evaluate(ruby_source)
+                         end
       end
 
       compiled_data[:simple_ivars].each do |ivar_name|
@@ -240,14 +241,14 @@ module ReactiveComponent
           kwargs_values[kwarg_name.to_sym] = evaluator.evaluate(ruby_source)
         end
         data[key] = if klass.respond_to?(:build_data_for_nested)
-          klass.build_data_for_nested(**kwargs_values)
-        else
-          ReactiveComponent::Compiler.build_data_for_nested(klass, **kwargs_values)
-        end
+                      klass.build_data_for_nested(**kwargs_values)
+                    else
+                      ReactiveComponent::Compiler.build_data_for_nested(klass, **kwargs_values)
+                    end
       end
 
-      data["id"] = record.id
-      data["dom_id"] = dom_id_for(record)
+      data['id'] = record.id
+      data['dom_id'] = dom_id_for(record)
       data
     end
 
