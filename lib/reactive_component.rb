@@ -7,6 +7,7 @@ require_relative "reactive_component/compiler"
 require_relative "reactive_component/erb_extractor"
 require_relative "reactive_component/data_evaluator"
 require_relative "reactive_component/wrapper"
+require_relative "reactive_component/broadcastable"
 require_relative "reactive_component/engine" if defined?(Rails::Engine)
 
 module ReactiveComponent
@@ -23,6 +24,7 @@ module ReactiveComponent
     class_attribute :_live_actions, instance_writer: false, default: {}
     class_attribute :_broadcast_config, instance_writer: false
     class_attribute :_client_state_fields, instance_writer: false, default: {}
+    class_attribute :_subscribed_events, instance_writer: false, default: %i[create update destroy]
   end
 
   def render_in(view_context, &block)
@@ -52,10 +54,49 @@ module ReactiveComponent
     template_script ? (template_script + wrapped).html_safe : wrapped
   end
 
+  def self.broadcast_for(component_class, record, action:)
+    return unless component_class._subscribed_events.include?(action)
+
+    config = component_class._broadcast_config
+    stream = if config&.dig(:stream)
+      s = config[:stream]
+      s.is_a?(Proc) ? s.call(record) : s
+    else
+      record
+    end
+
+    case action
+    when :update
+      Channel.broadcast_data(stream, action: :update, data: component_class.build_data(record))
+    when :destroy
+      Channel.broadcast_data(stream, action: :destroy, data: {
+        "id" => record.id, "dom_id" => component_class.dom_id_for(record)
+      })
+    when :create
+      target = config&.dig(:prepend_target)
+      return unless target
+
+      Channel.broadcast_data(stream, action: :prepend,
+        data: component_class.build_data(record).merge("target" => target))
+    end
+  end
+
   class_methods do
-    def subscribes_to(attr_name, class_name: nil)
+    def subscribes_to(attr_name, class_name: nil, only: %i[create update destroy])
       self._live_model_attr = attr_name.to_sym
       self._live_model_class_name = class_name || attr_name.to_s.classify
+      self._subscribed_events = Array(only).map(&:to_sym)
+
+      component_class = self
+      ActiveSupport.on_load(:active_record) do
+        model_class = component_class.live_model_class
+        next unless model_class
+
+        model_class.include(ReactiveComponent::Broadcastable)
+        model_class.register_reactive_component(component_class)
+      rescue NameError
+        # model class not yet defined — wiring skipped
+      end
     end
 
     def live_model_class

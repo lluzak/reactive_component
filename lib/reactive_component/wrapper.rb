@@ -53,7 +53,7 @@ module ReactiveComponent
 
     def find_stream_for(component_class, record)
       config = component_class._broadcast_config
-      return nil unless config
+      return record unless config
 
       stream = config[:stream]
       stream.is_a?(Proc) ? stream.call(record) : stream

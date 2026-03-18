@@ -1,9 +1,5 @@
 class Message < ApplicationRecord
-  include Broadcastable
-
   LABELS = %w[inbox sent archive trash].freeze
-
-  broadcasts_with MessageRowComponent, MessageDetailComponent, MessageLabelsComponent
 
   belongs_to :sender, class_name: "Contact"
   belongs_to :recipient, class_name: "Contact"

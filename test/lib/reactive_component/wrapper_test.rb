@@ -132,9 +132,9 @@ class ReactiveComponent::WrapperTest < ActiveSupport::TestCase
 
   # --- find_stream_for ---
 
-  test "find_stream_for returns nil when no broadcast config" do
+  test "find_stream_for returns record as default stream when no broadcast config" do
     klass = Class.new(ApplicationComponent) { include ReactiveComponent }
-    assert_nil ReactiveComponent::Wrapper.find_stream_for(klass, @message)
+    assert_equal @message, ReactiveComponent::Wrapper.find_stream_for(klass, @message)
   end
 
   test "find_stream_for evaluates Proc stream" do
