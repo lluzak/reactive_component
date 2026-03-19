@@ -20,9 +20,9 @@ module ReactiveComponent
 
     def verify_token!
       Rails.application.message_verifier(:reactive_component_action)
-        .verify(params[:token], purpose: :reactive_component_action)
+           .verify(params[:token], purpose: :reactive_component_action)
     rescue ActiveSupport::MessageVerifier::InvalidSignature
-      raise ActionController::RoutingError, "Not found"
+      raise ActionController::RoutingError, 'Not found'
     end
   end
 end

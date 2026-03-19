@@ -20,23 +20,23 @@ module ReactiveComponent
     end
 
     def request_update(data)
-      component_class = data["component"].constantize
-      params = data["params"] || {}
+      component_class = data['component'].constantize
+      params = data['params'] || {}
 
       model_class = component_class.live_model_class
-      record_id = data["record_id"] || params.delete("record_id")
+      record_id = data['record_id'] || params.delete('record_id')
       record = model_class.find_by(id: record_id)
       return unless record
 
-      if data["record_id"].present?
+      if data['record_id'].present?
         if record_matches?(record, params)
-          transmit({"action" => "render", "data" => component_class.build_data(record)})
+          transmit({ 'action' => 'render', 'data' => component_class.build_data(record) })
         else
-          transmit({"action" => "remove", "dom_id" => data["dom_id"]})
+          transmit({ 'action' => 'remove', 'dom_id' => data['dom_id'] })
         end
       else
         result = component_class.build_data(record, **params.symbolize_keys)
-        transmit({"action" => "render", "data" => result})
+        transmit({ 'action' => 'render', 'data' => result })
       end
     end
 
@@ -50,7 +50,7 @@ module ReactiveComponent
 
     def verified_stream_name
       Turbo::StreamsChannel.verified_stream_name(params[:signed_stream_name])
-    rescue
+    rescue StandardError
       nil
     end
 
@@ -59,11 +59,11 @@ module ReactiveComponent
         signed = Turbo::StreamsChannel.signed_stream_name(streamables)
         stream_name = Turbo::StreamsChannel.verified_stream_name(signed)
 
-        payload = {action: action, data: data}
+        payload = { action: action, data: data }
 
         if compress
           json = ActiveSupport::JSON.encode(payload)
-          ActionCable.server.broadcast(stream_name, {z: Base64.strict_encode64(ActiveSupport::Gzip.compress(json))})
+          ActionCable.server.broadcast(stream_name, { z: Base64.strict_encode64(ActiveSupport::Gzip.compress(json)) })
         else
           ActionCable.server.broadcast(stream_name, payload)
         end

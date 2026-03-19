@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require "system_test_helper"
+require 'system_test_helper'
 
 class StarToggleTest < SystemTestCase
-  test "toggling star on an unstarred message" do
-    visit "/"
+  test 'toggling star on an unstarred message' do
+    visit '/'
     wait_for_action_cable
 
     row = find("#message_#{@message1.id}")
@@ -19,11 +19,12 @@ class StarToggleTest < SystemTestCase
     assert_selector "#message_#{@message1.id} svg.text-yellow-400", wait: 5
 
     @message1.reload
-    assert @message1.starred, "Expected message to be starred in DB"
+
+    assert @message1.starred, 'Expected message to be starred in DB'
   end
 
-  test "toggling star off a starred message" do
-    visit "/"
+  test 'toggling star off a starred message' do
+    visit '/'
     wait_for_action_cable
 
     row = find("#message_#{@message2.id}")
@@ -37,14 +38,15 @@ class StarToggleTest < SystemTestCase
     assert_selector "#message_#{@message2.id} svg.text-gray-300", wait: 5
 
     @message2.reload
-    assert_not @message2.starred, "Expected message to be unstarred in DB"
+
+    assert_not @message2.starred, 'Expected message to be unstarred in DB'
   end
 
-  test "star toggle does not cause full page reload" do
-    visit "/"
+  test 'star toggle does not cause full page reload' do
+    visit '/'
     wait_for_action_cable
 
-    page.execute_script("window._reactiveTestMarker = true")
+    page.execute_script('window._reactiveTestMarker = true')
 
     row = find("#message_#{@message1.id}")
     star_button = row.find("[data-reactive-renderer-action-param='toggle_star']")
@@ -52,7 +54,8 @@ class StarToggleTest < SystemTestCase
 
     assert_selector "#message_#{@message1.id} svg.text-yellow-400", wait: 5
 
-    marker = page.evaluate_script("window._reactiveTestMarker")
-    assert marker, "Page was fully reloaded — expected in-place update"
+    marker = page.evaluate_script('window._reactiveTestMarker')
+
+    assert marker, 'Page was fully reloaded — expected in-place update'
   end
 end

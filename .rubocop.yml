@@ -1,0 +1,121 @@
+require:
+  - rubocop-performance
+  - rubocop-rails
+  - rubocop-minitest
+
+AllCops:
+  TargetRubyVersion: 3.1
+  NewCops: enable
+  SuggestExtensions: false
+  Exclude:
+    - 'test/dummy/**/*'
+    - 'node_modules/**/*'
+    - 'vendor/**/*'
+    - 'bin/**/*'
+    - 'gemfiles/**/*'
+
+Rails:
+  Enabled: true
+
+# Namespace modules don't need YARD docs
+Style/Documentation:
+  Enabled: false
+
+Layout/LineLength:
+  Max: 130
+
+# Keyword args don't count toward parameter limit
+Metrics/ParameterLists:
+  CountKeywordArgs: false
+
+# Main module, compiler, and data evaluator are legitimately large
+Metrics/ModuleLength:
+  Max: 250
+  Exclude:
+    - 'lib/reactive_component/erb_extractor.rb'
+
+Metrics/ClassLength:
+  Max: 150
+  Exclude:
+    - 'test/**/*'
+
+# Complex compilation/rendering/evaluation logic
+Metrics/MethodLength:
+  Max: 20
+  Exclude:
+    - 'lib/reactive_component.rb'
+    - 'lib/reactive_component/compiler.rb'
+    - 'lib/reactive_component/data_evaluator.rb'
+    - 'lib/reactive_component/erb_extractor.rb'
+    - 'lib/reactive_component/wrapper.rb'
+    - 'test/**/*'
+
+Metrics/AbcSize:
+  Max: 25
+  Exclude:
+    - 'lib/reactive_component.rb'
+    - 'lib/reactive_component/compiler.rb'
+    - 'lib/reactive_component/data_evaluator.rb'
+    - 'lib/reactive_component/erb_extractor.rb'
+    - 'lib/reactive_component/wrapper.rb'
+    - 'test/**/*'
+
+Metrics/CyclomaticComplexity:
+  Exclude:
+    - 'lib/reactive_component.rb'
+    - 'lib/reactive_component/compiler.rb'
+    - 'lib/reactive_component/data_evaluator.rb'
+    - 'lib/reactive_component/erb_extractor.rb'
+    - 'lib/reactive_component/wrapper.rb'
+
+Metrics/PerceivedComplexity:
+  Exclude:
+    - 'lib/reactive_component.rb'
+    - 'lib/reactive_component/compiler.rb'
+    - 'lib/reactive_component/data_evaluator.rb'
+    - 'lib/reactive_component/erb_extractor.rb'
+    - 'lib/reactive_component/wrapper.rb'
+
+Metrics/BlockLength:
+  Exclude:
+    - 'test/**/*'
+    - 'lib/reactive_component.rb'
+    - '*.gemspec'
+
+# Engine controllers inherit from ActionController::Base, not ApplicationController
+Rails/ApplicationController:
+  Exclude:
+    - 'app/controllers/reactive_component/actions_controller.rb'
+
+# Gem rake tasks don't need the Rails environment
+Rails/RakeEnvironment:
+  Enabled: false
+
+# html_safe is intentional in this gem's rendering layer
+Rails/OutputSafety:
+  Exclude:
+    - 'lib/**/*'
+
+# set_options overrides a method from the ruby2js filter base class
+Naming/AccessorMethodName:
+  Exclude:
+    - 'lib/reactive_component/erb_extractor.rb'
+
+# :true, :false, :nil are AST node type symbols in this context
+Lint/BooleanSymbol:
+  Exclude:
+    - 'lib/reactive_component/erb_extractor.rb'
+
+# instance_eval with runtime-constructed source is intrinsic to this feature
+Style/DocumentDynamicEvalDefinition:
+  Exclude:
+    - 'lib/reactive_component/data_evaluator.rb'
+
+# Test files use compact module nesting by convention
+Style/ClassAndModuleChildren:
+  Exclude:
+    - 'test/**/*'
+
+# Integration tests may need more than 3 assertions
+Minitest/MultipleAssertions:
+  Max: 10

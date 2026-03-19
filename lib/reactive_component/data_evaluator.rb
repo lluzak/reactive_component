@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require "action_view"
-require "action_view/record_identifier"
+require 'action_view'
+require 'action_view/record_identifier'
 
 module ReactiveComponent
   class DataEvaluator
@@ -15,9 +15,9 @@ module ReactiveComponent
 
     def self.inherited(subclass)
       super
-      if defined?(Rails) && Rails.application
-        subclass.include Rails.application.routes.url_helpers
-      end
+      return unless defined?(Rails) && Rails.application
+
+      subclass.include Rails.application.routes.url_helpers
     end
 
     def self.finalize!
@@ -28,31 +28,36 @@ module ReactiveComponent
       instance_variable_set(:"@#{model_attr}", record) if model_attr
       kwargs.each { |k, v| instance_variable_set(:"@#{k}", v) }
 
-      if component_class
-        begin
-          constructor_args = model_attr ? { model_attr => record }.merge(kwargs) : kwargs
-          instance = component_class.new(**constructor_args)
-          @component_delegate = instance
-          instance.instance_variables.each do |ivar|
-            next if (model_attr && ivar == :"@#{model_attr}") || instance_variable_defined?(ivar)
-            instance_variable_set(ivar, instance.instance_variable_get(ivar))
-          end
-        rescue
-          @component_delegate = component_class.allocate
+      return unless component_class
+
+      begin
+        constructor_args = model_attr ? { model_attr => record }.merge(kwargs) : kwargs
+        instance = component_class.new(**constructor_args)
+        @component_delegate = instance
+        instance.instance_variables.each do |ivar|
+          next if (model_attr && ivar == :"@#{model_attr}") || instance_variable_defined?(ivar)
+
+          instance_variable_set(ivar, instance.instance_variable_get(ivar))
         end
+      rescue StandardError
+        @component_delegate = component_class.allocate
       end
     end
 
     def evaluate(ruby_source)
       instance_eval(ruby_source)
     rescue NameError
-      @component_delegate&.instance_eval(ruby_source) rescue nil
-    rescue => e
+      begin
+        @component_delegate&.instance_eval(ruby_source)
+      rescue StandardError
+        nil
+      end
+    rescue StandardError => e
       Rails.logger.error "[ReactiveComponent::DataEvaluator] Error evaluating '#{ruby_source}': #{e.message}"
       nil
     end
 
-    def render(renderable, &block)
+    def render(renderable)
       renderer = ReactiveComponent.renderer || ActionController::Base
       renderer.render(renderable, layout: false)
     end
@@ -96,10 +101,10 @@ module ReactiveComponent
             result[var_name] = klass.build_data(record, **kwargs_values)
           else
             result[var_name] = if klass.respond_to?(:build_data_for_nested)
-              klass.build_data_for_nested(**kwargs_values)
-            else
-              ReactiveComponent::Compiler.build_data_for_nested(klass, **kwargs_values)
-            end
+                                 klass.build_data_for_nested(**kwargs_values)
+                               else
+                                 ReactiveComponent::Compiler.build_data_for_nested(klass, **kwargs_values)
+                               end
           end
         end
         result
@@ -117,14 +122,16 @@ module ReactiveComponent
     private
 
     def eval_lambda(block_var, source)
-      instance_eval("lambda { |#{block_var}| #{source} }")
+      # lambda { |<block_var>| <source> }
+      instance_eval("lambda { |#{block_var}| #{source} }", __FILE__, __LINE__)
     rescue NameError
-      @component_delegate.instance_eval("lambda { |#{block_var}| #{source} }")
+      # lambda { |<block_var>| <source> }
+      @component_delegate.instance_eval("lambda { |#{block_var}| #{source} }", __FILE__, __LINE__)
     end
 
-    def method_missing(method, *args, **kwargs, &block)
+    def method_missing(method, ...)
       if component_own_method?(method)
-        @component_delegate.send(method, *args, **kwargs, &block)
+        @component_delegate.send(method, ...)
       else
         super
       end
@@ -136,9 +143,10 @@ module ReactiveComponent
 
     def component_own_method?(method)
       return false unless @component_delegate
+
       klass = @component_delegate.class
-      klass.instance_methods(false).include?(method) ||
-        klass.private_instance_methods(false).include?(method)
+      klass.method_defined?(method, false) ||
+        klass.private_method_defined?(method, false)
     end
   end
 end

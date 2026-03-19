@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require "test_helper"
-require "capybara/minitest"
-require "capybara/cuprite"
+require 'test_helper'
+require 'capybara/minitest'
+require 'capybara/cuprite'
 
 Capybara.register_driver :cuprite do |app|
   Capybara::Cuprite::Driver.new(
@@ -37,24 +37,24 @@ class SystemTestCase < ActionDispatch::SystemTestCase
   private
 
   def seed_data
-    @alice = Contact.create!(name: "Alice Johnson", email: "alice@example.com")
-    @bob = Contact.create!(name: "Bob Smith", email: "bob@example.com")
-    @charlie = Contact.create!(name: "Charlie Brown", email: "charlie@example.com")
+    @alice = Contact.create!(name: 'Alice Johnson', email: 'alice@example.com')
+    @bob = Contact.create!(name: 'Bob Smith', email: 'bob@example.com')
+    @charlie = Contact.create!(name: 'Charlie Brown', email: 'charlie@example.com')
 
-    @important = Label.create!(name: "Important", color: "red")
-    @work = Label.create!(name: "Work", color: "blue")
-    @personal = Label.create!(name: "Personal", color: "green")
+    @important = Label.create!(name: 'Important', color: 'red')
+    @work = Label.create!(name: 'Work', color: 'blue')
+    @personal = Label.create!(name: 'Personal', color: 'green')
 
     @message1 = Message.create!(
-      subject: "Project Update",
-      body: "Here is the latest update on the project.",
+      subject: 'Project Update',
+      body: 'Here is the latest update on the project.',
       sender: @bob,
       recipient: @alice,
       starred: false
     )
 
     @message2 = Message.create!(
-      subject: "Meeting Tomorrow",
+      subject: 'Meeting Tomorrow',
       body: "Don't forget about the meeting tomorrow at 10am.",
       sender: @charlie,
       recipient: @alice,
@@ -62,8 +62,8 @@ class SystemTestCase < ActionDispatch::SystemTestCase
     )
 
     @message3 = Message.create!(
-      subject: "Quick Question",
-      body: "Hey, I had a quick question about the API.",
+      subject: 'Quick Question',
+      body: 'Hey, I had a quick question about the API.',
       sender: @bob,
       recipient: @alice,
       starred: false

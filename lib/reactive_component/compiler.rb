@@ -1,21 +1,21 @@
 # frozen_string_literal: true
 
-require "prism"
-require "ruby2js"
-require "ruby2js/erubi"
-require "ruby2js/filter/erb"
-require "ruby2js/filter/functions"
-require_relative "erb_extractor"
+require 'prism'
+require 'ruby2js'
+require 'ruby2js/erubi'
+require 'ruby2js/filter/erb'
+require 'ruby2js/filter/functions'
+require_relative 'erb_extractor'
 
 module ReactiveComponent
   module Compiler
-    ESCAPE_FN_JS = <<~JS.freeze
+    ESCAPE_FN_JS = <<~JS
       function _escape(s) {
         return s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
       }
     JS
 
-    TAG_FN_JS = <<~JS.freeze
+    TAG_FN_JS = <<~JS
       function _tag(name, content, attrs) {
         let html = '<' + name;
         if (attrs) {
@@ -43,7 +43,13 @@ module ReactiveComponent
         # Components with their own model attr are only nestable inside collection loops
         # (where we can call build_data per item), not as standalone nested components
         return nil if !inside_block && klass.respond_to?(:_live_model_attr) && klass._live_model_attr
-        begin; read_erb(klass); klass; rescue; nil; end
+
+        begin
+          read_erb(klass)
+          klass
+        rescue StandardError
+          nil
+        end
       end
 
       js_function = Ruby2JS.convert(
@@ -62,11 +68,11 @@ module ReactiveComponent
       # Simple @ivars not consumed by extraction become JS params directly
       all_ivars = extract_ivar_names(erb_ruby)
       consumed_ivars = expressions.values
-        .flat_map { |src| src.scan(/@(\w+)/).flatten }.to_set
+                                  .flat_map { |src| src.scan(/@(\w+)/).flatten }.to_set
       simple_ivars = (all_ivars - consumed_ivars).to_a.sort
 
       # Compile nested component templates and embed as JS functions
-      nested_functions_js = ""
+      nested_functions_js = ''
       embedded_classes = Set.new
 
       nested_components.each do |key, info|
@@ -84,7 +90,7 @@ module ReactiveComponent
           child_body = wrap_debug_return(child_body, debug_label)
         end
         nested_functions_js += "function _render_#{key}(data) {\n"
-        nested_functions_js += child_body.gsub(/^/, "  ") + "\n"
+        nested_functions_js += "#{child_body.gsub(/^/, '  ')}\n"
         nested_functions_js += "}\n"
       end
 
@@ -92,8 +98,10 @@ module ReactiveComponent
       collection_computed.each_value do |cc_info|
         (cc_info[:expressions] || {}).each_value do |expr_info|
           next unless expr_info[:nested_component]
+
           nc_class_name = expr_info[:nested_component][:class_name]
           next if embedded_classes.include?(nc_class_name)
+
           embedded_classes << nc_class_name
 
           child_class = nc_class_name.constantize
@@ -110,7 +118,7 @@ module ReactiveComponent
             child_body = wrap_debug_return(child_body, debug_label)
           end
           nested_functions_js += "function _render_#{fn_name}(data) {\n"
-          nested_functions_js += child_body.gsub(/^/, "  ") + "\n"
+          nested_functions_js += "#{child_body.gsub(/^/, '  ')}\n"
           nested_functions_js += "}\n"
         end
       end
@@ -118,7 +126,7 @@ module ReactiveComponent
       fields = (expressions.keys + simple_ivars + nested_components.keys).uniq.sort
       parent_raw_body = strip_function_wrapper(js_function)
       js_body = "#{ESCAPE_FN_JS}#{TAG_FN_JS}#{nested_functions_js}"
-      js_body += "let { #{fields.join(", ")} } = data;\n"
+      js_body += "let { #{fields.join(', ')} } = data;\n"
       js_body += add_html_escaping(parent_raw_body, raw_fields)
 
       {
@@ -150,10 +158,10 @@ module ReactiveComponent
 
       compiled[:expressions].each do |var_name, ruby_source|
         data[var_name] = if collection_computed.key?(var_name)
-          evaluator.evaluate_collection(ruby_source, collection_computed[var_name])
-        else
-          evaluator.evaluate(ruby_source)
-        end
+                           evaluator.evaluate_collection(ruby_source, collection_computed[var_name])
+                         else
+                           evaluator.evaluate(ruby_source)
+                         end
       end
 
       compiled[:simple_ivars].each do |ivar_name|
@@ -167,15 +175,15 @@ module ReactiveComponent
       result = Prism.parse(erb_ruby)
       ivars = Set.new
       walk(result.value) do |node|
-        ivars << node.name.to_s.delete_prefix("@") if node.is_a?(Prism::InstanceVariableReadNode)
+        ivars << node.name.to_s.delete_prefix('@') if node.is_a?(Prism::InstanceVariableReadNode)
       end
       ivars
     end
 
     def read_erb(component_class)
       erb_path = component_class.instance_method(:initialize)
-                   .source_location&.first
-                   &.sub(/\.rb$/, ".html.erb")
+                                .source_location&.first
+                                &.sub(/\.rb$/, '.html.erb')
 
       raise ArgumentError, "Cannot find ERB template for #{component_class}" unless erb_path && File.exist?(erb_path)
 
@@ -184,27 +192,29 @@ module ReactiveComponent
 
     def strip_function_wrapper(js_function)
       js_function
-        .sub(/\Afunction render\(\{[^}]*\}\) \{\n?/, "")
-        .sub(/\}\s*\z/, "")
-        .gsub(/^  /, "")
+        .sub(/\Afunction render\(\{[^}]*\}\) \{\n?/, '')
+        .sub(/\}\s*\z/, '')
+        .gsub(/^  /, '')
     end
 
     def unwrap_function(js_function, fields, raw_fields, include_helpers: true)
       body = strip_function_wrapper(js_function)
-      destructure = "let { #{fields.join(", ")} } = data;\n"
+      destructure = "let { #{fields.join(', ')} } = data;\n"
       escaped_body = add_html_escaping(body, raw_fields)
-      helpers = include_helpers ? "#{ESCAPE_FN_JS}#{TAG_FN_JS}" : ""
+      helpers = include_helpers ? "#{ESCAPE_FN_JS}#{TAG_FN_JS}" : ''
       "#{helpers}#{destructure}#{escaped_body}"
     end
 
     def wrap_debug_return(body, label)
-      wrapper = "return '<div data-reactive-debug=\"#{label}' + (data.dom_id ? ' #' + data.dom_id : '') + '\" class=\"reactive-debug-wrapper\">' + _buf + '</div>';"
+      wrapper = "return '<div data-reactive-debug=\"#{label}'" \
+                "+ (data.dom_id ? ' #' + data.dom_id : '')" \
+                "+ '\" class=\"reactive-debug-wrapper\">' + _buf + '</div>';"
       body.sub(/return _buf\s*\z/, wrapper)
     end
 
     def add_html_escaping(body, raw_fields)
       body.gsub(/\+= String\((.+?)\);/) do
-        expr = $1
+        expr = ::Regexp.last_match(1)
         if raw_fields.include?(expr)
           "+= #{expr};"
         else

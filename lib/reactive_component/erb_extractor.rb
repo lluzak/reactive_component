@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "ruby2js"
+require 'ruby2js'
 
 module ReactiveComponent
   module ErbExtractor
@@ -35,16 +35,17 @@ module ReactiveComponent
       # transform them. The Functions filter processes certain patterns
       # (e.g. respond_to? -> "in" operator) in its own process method,
       # bypassing on_send where ErbExtractor normally does extraction.
-      if @erb_bufvar && node.type == :send && server_evaluable?(node) && !contains_lvar?(node)
-        unless in_block_context? && contains_block_var?(node)
-          if in_block_context? && current_block_context[:collection_source] == rebuild_source(node) && current_block_context[:collection_key].nil?
-            key = record_collection_extraction(node)
-            current_block_context[:collection_key] = key
-          else
-            key = record_extraction(node)
-          end
-          return s(:lvar, key.to_sym)
+      if @erb_bufvar && node.type == :send && server_evaluable?(node) &&
+         !contains_lvar?(node) && !(in_block_context? && contains_block_var?(node))
+        if in_block_context? &&
+           current_block_context[:collection_source] == rebuild_source(node) &&
+           current_block_context[:collection_key].nil?
+          key = record_collection_extraction(node)
+          current_block_context[:collection_key] = key
+        else
+          key = record_extraction(node)
         end
+        return s(:lvar, key.to_sym)
       end
 
       return super unless node.type == :block
@@ -71,14 +72,14 @@ module ReactiveComponent
       # the Functions filter converts the block to for...of without dispatching
       # to on_send/on_ivar, so the collection is never extracted. Pre-extract
       # here and rewrite the block node so the JS references the extracted variable.
-      if (target.type == :ivar || target.type == :const) && collection_source
+      if %i[ivar const].include?(target.type) && collection_source
         key = record_collection_extraction(target)
         current_block_context[:collection_key] = key
         new_call = s(:send, s(:lvar, key.to_sym), :each)
         node = s(:block, new_call, args, node.children[2])
       end
 
-      result = super(node)
+      result = super
       context = @block_context_stack.pop
       flush_block_computed(context) if context[:collection_key]
       result
@@ -91,7 +92,7 @@ module ReactiveComponent
       if send_node.respond_to?(:type) && send_node.type == :const
         key = record_extraction(send_node)
         return s(:op_asgn, s(:lvasgn, @erb_bufvar), :+,
-          s(:send, nil, :String, s(:lvar, key.to_sym)))
+                 s(:send, nil, :String, s(:lvar, key.to_sym)))
       end
 
       target, method, *args = send_node.children
@@ -107,9 +108,7 @@ module ReactiveComponent
       end
 
       # tag.span(content, class: "...") -- build tag in JS
-      if tag_builder?(target)
-        return process_tag_builder_append(send_node)
-      end
+      return process_tag_builder_append(send_node) if tag_builder?(target)
 
       # Nestable component: compile to JS function instead of server-rendering HTML
       if @nestable_checker && render_component_call?(send_node)
@@ -126,11 +125,11 @@ module ReactiveComponent
             prop = s(:send, s(:lvar, block_var), :[], s(:str, key))
             fn_name = :"_render_#{class_name.underscore}"
             return s(:op_asgn, s(:lvasgn, @erb_bufvar), :+,
-              s(:send, nil, fn_name, prop))
+                     s(:send, nil, fn_name, prop))
           else
             key = record_nested_component(send_node, class_name)
             return s(:op_asgn, s(:lvasgn, @erb_bufvar), :+,
-              s(:send, nil, :"_render_#{key}", s(:lvar, key.to_sym)))
+                     s(:send, nil, :"_render_#{key}", s(:lvar, key.to_sym)))
           end
         end
       end
@@ -144,12 +143,11 @@ module ReactiveComponent
         key = record_block_computed(send_node, raw: raw)
         block_var = current_block_context[:var]
         prop = s(:send, s(:lvar, block_var), :[], s(:str, key))
-        if raw
-          return s(:op_asgn, s(:lvasgn, @erb_bufvar), :+, prop)
-        else
-          return s(:op_asgn, s(:lvasgn, @erb_bufvar), :+,
-            s(:send, nil, :String, prop))
-        end
+        return s(:op_asgn, s(:lvasgn, @erb_bufvar), :+, prop) if raw
+
+        return s(:op_asgn, s(:lvasgn, @erb_bufvar), :+,
+                 s(:send, nil, :String, prop))
+
       end
 
       # Fallback: any remaining expression that doesn't reference block
@@ -157,12 +155,11 @@ module ReactiveComponent
       unless lvar_chain?(send_node) || contains_lvar?(send_node)
         raw = html_producing?(send_node)
         key = record_extraction(send_node, raw: raw)
-        if raw
-          return s(:op_asgn, s(:lvasgn, @erb_bufvar), :+, s(:lvar, key.to_sym))
-        else
-          return s(:op_asgn, s(:lvasgn, @erb_bufvar), :+,
-            s(:send, nil, :String, s(:lvar, key.to_sym)))
-        end
+        return s(:op_asgn, s(:lvasgn, @erb_bufvar), :+, s(:lvar, key.to_sym)) if raw
+
+        return s(:op_asgn, s(:lvasgn, @erb_bufvar), :+,
+                 s(:send, nil, :String, s(:lvar, key.to_sym)))
+
       end
 
       defined?(super) ? super : nil
@@ -176,9 +173,11 @@ module ReactiveComponent
       if render_component_call?(call_node)
         block_html = extract_block_html(body)
         call_source = rebuild_source(call_node)
-        full_source = block_html ?
-          "#{call_source} { #{block_html.inspect}.html_safe }" :
-          call_source
+        full_source = if block_html
+                        "#{call_source} { #{block_html.inspect}.html_safe }"
+                      else
+                        call_source
+                      end
         key = record_extraction(nil, raw: true, source_override: full_source)
         return s(:op_asgn, s(:lvasgn, @erb_bufvar), :+, s(:lvar, key.to_sym))
       end
@@ -217,6 +216,8 @@ module ReactiveComponent
       s(:lvar, key.to_sym)
     end
 
+    HTML_PRODUCING_METHODS = %i[content_tag link_to button_to image_tag render].to_set.freeze
+
     private
 
     # --- Tag builder ---
@@ -227,10 +228,10 @@ module ReactiveComponent
 
       # Separate positional args from keyword hash
       positional = args.dup
-      hash_arg = (ast_node?(positional.last) && positional.last.type == :hash) ? positional.pop : nil
+      hash_arg = ast_node?(positional.last) && positional.last.type == :hash ? positional.pop : nil
       content_node = positional.first
 
-      content_expr = content_node ? process_tag_arg(content_node) : s(:str, "")
+      content_expr = content_node ? process_tag_arg(content_node) : s(:str, '')
 
       if hash_arg
         attrs_expr = process_tag_attrs(hash_arg)
@@ -246,9 +247,7 @@ module ReactiveComponent
     def process_tag_arg(node)
       return process(node) unless ast_node?(node)
 
-      if node.type == :array
-        return s(:array, *node.children.map { |child| process_tag_arg(child) })
-      end
+      return s(:array, *node.children.map { |child| process_tag_arg(child) }) if node.type == :array
 
       if ivar_chain?(node)
         key = record_extraction(node)
@@ -272,8 +271,9 @@ module ReactiveComponent
     def process_tag_attrs(hash_node)
       pairs = hash_node.children.map do |pair|
         next pair unless ast_node?(pair) && pair.type == :pair
+
         key_node, value_node = pair.children
-        js_key = (ast_node?(key_node) && key_node.type == :sym) ? s(:str, key_node.children[0].to_s) : key_node
+        js_key = ast_node?(key_node) && key_node.type == :sym ? s(:str, key_node.children[0].to_s) : key_node
         processed_value = process_tag_arg(value_node)
         s(:pair, js_key, processed_value)
       end
@@ -285,8 +285,10 @@ module ReactiveComponent
     # Detects render(SomeConst.new(...)) pattern
     def render_component_call?(node)
       return false unless node&.type == :send
+
       target, method, *args = node.children
       return false unless target.nil? && method == :render && args.length == 1
+
       arg = args.first
       arg&.type == :send && arg.children[1] == :new
     end
@@ -295,6 +297,7 @@ module ReactiveComponent
     # from buffer append operations (_buf << "html" or _buf += "html")
     def extract_block_html(body)
       return nil unless body
+
       strings = []
       collect_buffer_strings(body, strings)
       strings.empty? ? nil : strings.join
@@ -302,12 +305,14 @@ module ReactiveComponent
 
     def collect_buffer_strings(node, strings)
       return unless ast_node?(node)
+
       case node.type
       when :begin
         node.children.each { |child| collect_buffer_strings(child, strings) }
       when :op_asgn, :send
         node.children.each do |child|
           next unless ast_node?(child)
+
           collect_str_content(child, strings)
         end
       end
@@ -321,9 +326,7 @@ module ReactiveComponent
         node.children.each { |c| strings << c.children[0] if ast_node?(c) && c.type == :str }
       when :send
         # handle .freeze wrapper: str("...").freeze or dstr(...).freeze
-        if node.children[1] == :freeze && ast_node?(node.children[0])
-          collect_str_content(node.children[0], strings)
-        end
+        collect_str_content(node.children[0], strings) if node.children[1] == :freeze && ast_node?(node.children[0])
       end
     end
 
@@ -347,12 +350,14 @@ module ReactiveComponent
 
     def contains_block_var?(node)
       return false unless in_block_context?
+
       contains_specific_lvar?(node, current_block_context[:var])
     end
 
     def contains_specific_lvar?(node, var_name)
       return false unless ast_node?(node)
       return true if node.type == :lvar && node.children[0] == var_name
+
       node.children.any? { |child| ast_node?(child) && contains_specific_lvar?(child, var_name) }
     end
 
@@ -371,6 +376,7 @@ module ReactiveComponent
 
     def flush_block_computed(context)
       return unless @extraction_output
+
       key = context[:collection_key]
       return unless key
 
@@ -391,6 +397,7 @@ module ReactiveComponent
       if hash_node && ast_node?(hash_node) && hash_node.type == :hash
         hash_node.children.each do |pair|
           next unless ast_node?(pair) && pair.type == :pair
+
           kwarg_name = pair.children[0].children[0].to_s
           kwarg_source = rebuild_source(pair.children[1])
           kwargs[kwarg_name] = kwarg_source
@@ -418,6 +425,7 @@ module ReactiveComponent
       if hash_node && ast_node?(hash_node) && hash_node.type == :hash
         hash_node.children.each do |pair|
           next unless ast_node?(pair) && pair.type == :pair
+
           kwarg_name = pair.children[0].children[0].to_s
           kwarg_source = rebuild_source(pair.children[1])
           kwargs[kwarg_name] = kwarg_source
@@ -439,6 +447,7 @@ module ReactiveComponent
       return false unless node && ast_node?(node)
       return true if node.type == :ivar
       return false unless node.type == :send
+
       target = node.children[0]
       target && ivar_chain?(target)
     end
@@ -447,16 +456,17 @@ module ReactiveComponent
       parts = []
       current = node
       while current && ast_node?(current) && current.type == :send
-        parts.unshift(current.children[1].to_s.delete_suffix("?"))
+        parts.unshift(current.children[1].to_s.delete_suffix('?'))
         current = current.children[0]
       end
-      parts.join("_")
+      parts.join('_')
     end
 
     def const_chain?(node)
       return false unless node && ast_node?(node)
       return true if node.type == :const
       return false unless node.type == :send
+
       target = node.children[0]
       target && (const_chain?(target) || ivar_chain?(target))
     end
@@ -466,12 +476,14 @@ module ReactiveComponent
     def server_evaluable?(node)
       return false unless node && ast_node?(node)
       return false if lvar_only?(node)
+
       ivar_chain?(node) || const_chain?(node) ||
         (node.type == :send && node.children[0].nil? && !pure_lvar_args?(node))
     end
 
     def extractable?(node)
       return false unless ast_node?(node)
+
       ivar_chain?(node) || const_chain?(node) ||
         (node.type == :send && node.children[0].nil? && contains_ivar?(node))
     end
@@ -479,18 +491,21 @@ module ReactiveComponent
     def contains_ivar?(node)
       return false unless ast_node?(node)
       return true if node.type == :ivar
+
       node.children.any? { |child| ast_node?(child) && contains_ivar?(child) }
     end
 
     def contains_const?(node)
       return false unless ast_node?(node)
       return true if node.type == :const
+
       node.children.any? { |child| ast_node?(child) && contains_const?(child) }
     end
 
     def contains_lvar?(node)
       return false unless ast_node?(node)
       return true if node.type == :lvar
+
       node.children.any? { |child| ast_node?(child) && contains_lvar?(child) }
     end
 
@@ -498,14 +513,16 @@ module ReactiveComponent
     def lvar_only?(node)
       return false unless node && ast_node?(node)
       return true if node.type == :lvar
-      return false if node.type == :ivar || node.type == :const
+      return false if %i[ivar const].include?(node.type)
       return false unless node.type == :send
+
       !contains_ivar?(node) && !contains_const?(node)
     end
 
     # Returns true if a bare method call's arguments only reference lvars/literals
     def pure_lvar_args?(node)
       return true unless node.type == :send
+
       _target, _method, *args = node.children
       args.none? { |arg| ast_node?(arg) && (contains_ivar?(arg) || contains_const?(arg)) }
     end
@@ -514,16 +531,17 @@ module ReactiveComponent
       return false unless node && ast_node?(node)
       return true if node.type == :lvar
       return false unless node.type == :send
+
       node.children[0] && lvar_chain?(node.children[0])
     end
 
-    HTML_PRODUCING_METHODS = %i[content_tag link_to button_to image_tag render].to_set.freeze
-
     def html_producing?(node)
       return false unless node.type == :send
+
       target, method = node.children
       return true if tag_builder?(target)
       return true if target.nil? && HTML_PRODUCING_METHODS.include?(method)
+
       false
     end
 
@@ -534,21 +552,20 @@ module ReactiveComponent
     # --- Source reconstruction ---
 
     def rebuild_source(node)
-      return "" unless ast_node?(node)
+      return '' unless ast_node?(node)
+
       case node.type
-      when :ivar then node.children[0].to_s
-      when :lvar then node.children[0].to_s
+      when :ivar, :lvar, :int, :float then node.children[0].to_s
       when :const
         parent, name = node.children
         parent ? "#{rebuild_source(parent)}::#{name}" : name.to_s
       when :str then node.children[0].inspect
-      when :int, :float then node.children[0].to_s
-      when :true then "true"
-      when :false then "false"
-      when :nil then "nil"
+      when :true then 'true'
+      when :false then 'false'
+      when :nil then 'nil'
       when :sym then ":#{node.children[0]}"
       when :hash
-        node.children.map { |pair| rebuild_source(pair) }.join(", ")
+        node.children.map { |pair| rebuild_source(pair) }.join(', ')
       when :pair
         key, value = node.children
         val_str = rebuild_source(value)
@@ -561,14 +578,14 @@ module ReactiveComponent
       when :send
         target, method, *args = node.children
         recv = target ? rebuild_source(target) : nil
-        args_src = args.map { |a| rebuild_source(a) }.join(", ")
+        args_src = args.map { |a| rebuild_source(a) }.join(', ')
         method_str = method.to_s
         if recv
           args.empty? ? "#{recv}.#{method_str}" : "#{recv}.#{method_str}(#{args_src})"
         else
           "#{method_str}(#{args_src})"
         end
-      else ""
+      else ''
       end
     end
 
@@ -603,6 +620,7 @@ module ReactiveComponent
 
     def flush_extraction_output
       return unless @extraction_output
+
       @extraction_output[:expressions] = @extracted_expressions.dup
       @extraction_output[:raw_fields] = @extracted_raw_fields.dup
     end
