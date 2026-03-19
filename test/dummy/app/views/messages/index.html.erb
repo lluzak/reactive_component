@@ -1,14 +1,29 @@
 <%= turbo_stream_from current_contact, :messages %>
-<div class="min-h-full">
-  <div class="max-w-4xl mx-auto py-6">
-    <div class="flex items-center justify-between px-4 mb-4">
-      <h1 class="text-2xl font-bold text-gray-900">Inbox</h1>
-      <span class="text-sm text-gray-500"><%= @messages.count %> messages</span>
+<div class="flex h-full">
+  <%# Left sidebar: message list %>
+  <div class="w-80 lg:w-96 border-r border-gray-200 bg-white flex flex-col flex-shrink-0 overflow-hidden">
+    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 flex-shrink-0">
+      <h1 class="text-lg font-bold text-gray-900">Inbox</h1>
+      <span class="text-xs text-gray-400"><%= @messages.count %> messages</span>
     </div>
-    <div class="bg-white rounded-lg shadow" id="message_items">
+    <div class="flex-1 overflow-y-auto" id="message_items">
       <% @messages.each do |message| %>
         <%= render MessageRowComponent.new(message: message) %>
       <% end %>
     </div>
+  </div>
+
+  <%# Right main: message detail %>
+  <div class="flex-1 overflow-y-auto bg-gray-50">
+    <%= turbo_frame_tag "message_detail", class: "block h-full" do %>
+      <div class="flex items-center justify-center h-full">
+        <div class="text-center">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 mx-auto mb-3 text-gray-300">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+          </svg>
+          <p class="text-sm text-gray-400">Select a message to read</p>
+        </div>
+      </div>
+    <% end %>
   </div>
 </div>

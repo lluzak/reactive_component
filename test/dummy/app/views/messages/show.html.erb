@@ -1,19 +1,7 @@
-<div class="min-h-full">
-  <div class="max-w-4xl mx-auto py-6">
-    <div class="mb-4 px-4">
-      <%= link_to messages_path, class: "inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900" do %>
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-        </svg>
-        Back to inbox
-      <% end %>
-    </div>
-    <div class="bg-white rounded-lg shadow">
-      <div class="h-full flex flex-col">
-        <div class="flex-1 overflow-y-auto">
-          <%= render MessageDetailComponent.new(message: @message) %>
-        </div>
-      </div>
+<%= turbo_frame_tag "message_detail" do %>
+  <div class="h-full flex flex-col">
+    <div class="flex-1 overflow-y-auto">
+      <%= render MessageDetailComponent.new(message: @message) %>
     </div>
   </div>
-</div>
+<% end %>
