@@ -74,6 +74,25 @@ See the [Installation guide](https://lluzak.github.io/reactive_component/install
 - **Client-side state** — ephemeral UI state managed in the browser
 - **Multi-Rails support** — tested against Rails 7.1, 7.2, and 8.0
 
+## How It Works
+
+ReactiveComponent compiles your ERB templates into JavaScript render functions at boot time using [ruby2js](https://github.com/ruby2js/ruby2js). When a model changes:
+
+1. `after_commit` callbacks (auto-wired by `subscribes_to`) trigger a broadcast.
+2. The server evaluates only the dynamic expressions from your template and sends compact JSON data over ActionCable.
+3. The client-side Stimulus controller runs the compiled JS template with the new data and updates the DOM.
+
+No full page reload. No custom JavaScript. Your existing ERB templates are the single source of truth.
+
+See the [full architecture guide](https://lluzak.github.io/reactive_component/how-it-works.html) for details.
+
+## Advanced Features
+
+- **Nested components** -- Render reactive components inside other reactive components. [Guide](https://lluzak.github.io/reactive_component/nested-components.html)
+- **Collection loops** -- Use `.each` in templates with automatic per-item data extraction. [Guide](https://lluzak.github.io/reactive_component/collections.html)
+- **Broadcast compression** -- Gzip-compress ActionCable payloads for large components. [Configuration](https://lluzak.github.io/reactive_component/configuration.html)
+- **Stream filtering** -- Filter broadcasts by subscription params for scoped updates. [Configuration](https://lluzak.github.io/reactive_component/configuration.html)
+
 ## Development
 
 ```bash
@@ -84,3 +103,7 @@ bundle exec rake test
 ## Contributing
 
 Bug reports and pull requests are welcome on GitHub at https://github.com/lluzak/reactive_component.
+
+## License
+
+The gem is available as open source under the terms of the [MIT License](LICENSE.txt).
