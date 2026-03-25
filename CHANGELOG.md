@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.0] - 2026-03-25
+
+### Added
+- "How It Works" architecture documentation page
+- "Nested Components" guide
+- "Collections & Loops" guide
+- "Troubleshooting" page
+- Enriched README with architecture summary, advanced features, and license section
+- Reorganized docs sidebar for logical learning path
+
 ## [0.1.0] - 2026-03-15
 
 ### Added
