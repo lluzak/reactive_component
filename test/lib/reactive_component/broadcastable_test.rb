@@ -6,6 +6,9 @@ class ReactiveComponent::BroadcastableTest < ActiveSupport::TestCase
   include ActionCable::TestHelper
 
   setup do
+    # Force-load component class so subscribes_to wires Broadcastable on Message
+    # before assertions (test order is randomized).
+    _ = MessageRowComponent
     @sender    = Contact.create!(name: 'Alice', email: 'alice@example.com')
     @recipient = Contact.create!(name: 'Bob',   email: 'bob@example.com')
     @message   = Message.new(
