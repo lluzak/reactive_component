@@ -24,6 +24,10 @@ module ReactiveComponent
       end
     end
 
+    def broadcast_reactive_update
+      _broadcast_reactive(:update)
+    end
+
     private
 
     def _broadcast_reactive_create  = _broadcast_reactive(:create)

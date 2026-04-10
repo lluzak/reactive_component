@@ -30,11 +30,18 @@ class MessageLabelsComponent < ApplicationComponent
   }.freeze
 
   def add_label(label_id:)
-    @message.labels << Label.find(label_id) unless @message.label_ids.include?(label_id.to_i)
+    return if @message.label_ids.include?(label_id.to_i)
+
+    @message.labels << Label.find(label_id)
+    @message.broadcast_reactive_update
   end
 
   def remove_label(label_id:)
-    @message.labelings.find_by(label_id: label_id)&.destroy
+    labeling = @message.labelings.find_by(label_id: label_id)
+    return unless labeling
+
+    labeling.destroy
+    @message.broadcast_reactive_update
   end
 
   def label_action(message, label)
