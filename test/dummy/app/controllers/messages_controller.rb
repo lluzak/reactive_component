@@ -7,6 +7,7 @@ class MessagesController < ApplicationController
 
   def show
     @message.mark_as_read!
+    @messages = current_contact.received_messages.inbox.includes(:sender, :recipient, :labels).newest_first
   end
 
   def toggle_star
