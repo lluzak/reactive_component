@@ -8,7 +8,8 @@
       <% unread_count = key == "inbox" ? current_contact.received_messages.inbox.unread.count : 0 %>
       <a href="<%= key == "inbox" ? root_path : folder_path(key) %>"
          class="<%= active ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50' %> group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium"
-         data-turbo="false">
+         data-turbo-frame="message_panel"
+         data-turbo-action="advance">
         <%= render "folder_icon", icon: config[:icon], active: active %>
         <span class="flex-1"><%= config[:label] %></span>
         <% if unread_count > 0 %>

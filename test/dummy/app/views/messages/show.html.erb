@@ -1,23 +1,9 @@
 <%= turbo_stream_from current_contact, :messages %>
 <div class="flex h-full">
-  <%# Folder navigation %>
-  <%= render "folders" %>
-
-  <%# Message list %>
-  <div class="w-80 lg:w-96 border-r border-gray-200 bg-white flex flex-col flex-shrink-0 overflow-hidden">
-    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 flex-shrink-0">
-      <h1 class="text-lg font-bold text-gray-900"><%= @folder_config[:label] %></h1>
-      <span class="text-xs text-gray-400"><%= pluralize(@messages.count, "message") %></span>
-    </div>
-    <div class="flex-1 overflow-y-auto" id="message_items">
-      <% @messages.each do |message| %>
-        <%= render MessageRowComponent.new(message: message) %>
-      <% end %>
-    </div>
-  </div>
+  <%= render "message_panel" %>
 
   <%# Message detail %>
-  <div class="flex-1 overflow-y-auto bg-gray-50">
+  <div class="flex-1 overflow-y-auto scrollbar-thin bg-gray-50">
     <%= turbo_frame_tag "message_detail", class: "block h-full" do %>
       <div class="h-full flex flex-col">
         <div class="flex-1 overflow-y-auto">
