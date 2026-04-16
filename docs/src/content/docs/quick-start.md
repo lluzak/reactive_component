@@ -127,8 +127,8 @@ Trigger the action from the template:
   <p><%= truncate(@notification.body, length: 100) %></p>
 
   <% unless @notification.read? %>
-    <button data-action="click->reactive-renderer#action"
-            data-reactive-action="mark_as_read">
+    <button data-action="click->reactive-renderer#performAction"
+            data-reactive-renderer-action-param="mark_as_read">
       Mark as read
     </button>
   <% end %>
@@ -136,3 +136,55 @@ Trigger the action from the template:
 ```
 
 When the button is clicked, the Stimulus controller sends a signed request to the server, which executes `mark_as_read`, updates the record, and broadcasts the change back to all clients.
+
+## Adding client state
+
+Some UI state is purely visual and doesn't need to live on the server — like whether a row is selected or a panel is expanded. Use `client_state` for this:
+
+```ruby
+class NotificationComponent < ApplicationComponent
+  include ReactiveComponent
+
+  subscribes_to :notification
+  broadcasts stream: ->(notification) { [notification.user, :notifications] }
+  live_action :mark_as_read
+  client_state :expanded, default: false
+
+  def initialize(notification:, expanded: false)
+    @notification = notification
+    @expanded = expanded
+  end
+
+  private
+
+  def mark_as_read
+    @notification.update!(read: true)
+  end
+end
+```
+
+Use the `setState` Stimulus action to toggle client state from the template:
+
+```erb
+<div class="notification <%= "unread" unless @notification.read? %>">
+  <strong><%= @notification.title %></strong>
+
+  <button data-action="click->reactive-renderer#setState"
+          data-reactive-renderer-expanded-param="true">
+    <%= @expanded ? "Collapse" : "Expand" %>
+  </button>
+
+  <% if @expanded %>
+    <p><%= @notification.body %></p>
+  <% end %>
+
+  <% unless @notification.read? %>
+    <button data-action="click->reactive-renderer#performAction"
+            data-reactive-renderer-action-param="mark_as_read">
+      Mark as read
+    </button>
+  <% end %>
+</div>
+```
+
+Client state re-renders happen instantly on the client — no server round-trip. When a server-driven update arrives (e.g. from `mark_as_read`), the client state is preserved and merged with the new server data.
