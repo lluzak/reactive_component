@@ -6,6 +6,10 @@ module ReactiveComponent
   class Engine < ::Rails::Engine
     isolate_namespace ReactiveComponent
 
+    initializer 'reactive_component.data_evaluator' do
+      ReactiveComponent::DataEvaluator.finalize!
+    end
+
     initializer 'reactive_component.importmap', before: 'importmap' do |app|
       if defined?(Importmap)
         app.config.importmap.paths <<

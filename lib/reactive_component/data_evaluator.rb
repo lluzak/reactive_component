@@ -115,6 +115,10 @@ module ReactiveComponent
       Rails.application.routes.default_url_options
     end
 
+    def controller
+      nil
+    end
+
     def optimize_routes_generation?
       false
     end

@@ -48,6 +48,23 @@ class ReactiveComponent::DataEvaluatorTest < ActiveSupport::TestCase
     assert_equal '...', result
   end
 
+  # --- evaluate: Rails route helpers ---
+
+  test 'evaluate can call path helpers' do
+    evaluator = ReactiveComponent::DataEvaluator.new(:message, @message, component_class: MessageRowComponent)
+    result = evaluator.evaluate('message_path(@message)')
+
+    assert_equal "/messages/#{@message.id}", result
+  end
+
+  test 'evaluate resolves path helpers in build_data' do
+    _ = MessageRowComponent
+    data = MessageRowComponent.build_data(@message)
+    href = data.values.find { |v| v.is_a?(String) && v.start_with?('/messages/') }
+
+    assert_equal "/messages/#{@message.id}", href
+  end
+
   # --- evaluate: NameError fallback to component delegate ---
 
   test 'evaluate delegates to component for unknown methods' do
