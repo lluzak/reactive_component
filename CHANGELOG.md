@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.3.0] - 2026-04-16
+
+### Added
+- `broadcast_reactive_update` public method on models for manual broadcasts without touching the record
+- Client state rendering: `setState` now re-renders components after updating client state
+- Exclusive client state: `setState` with `exclusive` param deselects sibling components
+- Folder navigation (Inbox, Starred, Sent, Archive, Trash) in dummy app
+- Documentation for `client_state` usage (setState, exclusive mode, selectable lists)
+- Documentation for `broadcast_reactive_update` with examples
+- DataEvaluator tests for path helper resolution
+
+### Fixed
+- Path helpers (e.g. `message_path`) returning nil in reactive broadcasts — added engine initializer to finalize DataEvaluator at boot
+- `setState` not triggering re-render after updating client state
+- Turbo frame navigation breaking when `setState` morphed the DOM synchronously — deferred with `requestAnimationFrame`
+- `live_action` documentation using outdated Stimulus data attribute conventions
+
 ## [0.2.0] - 2026-03-25
 
 ### Added
