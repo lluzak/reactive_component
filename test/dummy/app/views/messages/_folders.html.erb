@@ -1,0 +1,20 @@
+<div class="w-56 border-r border-gray-200 bg-white flex flex-col flex-shrink-0">
+  <div class="px-4 py-3 border-b border-gray-100">
+    <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wider">Folders</h2>
+  </div>
+  <nav class="flex-1 px-2 py-2 space-y-0.5">
+    <% MessagesController::FOLDERS.each do |key, config| %>
+      <% active = @folder == key %>
+      <% unread_count = key == "inbox" ? current_contact.received_messages.inbox.unread.count : 0 %>
+      <a href="<%= key == "inbox" ? root_path : folder_path(key) %>"
+         class="<%= active ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50' %> group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium"
+         data-turbo="false">
+        <%= render "folder_icon", icon: config[:icon], active: active %>
+        <span class="flex-1"><%= config[:label] %></span>
+        <% if unread_count > 0 %>
+          <span class="text-xs font-medium text-blue-600 bg-blue-100 rounded-full px-1.5 py-0.5"><%= unread_count %></span>
+        <% end %>
+      </a>
+    <% end %>
+  </nav>
+</div>
