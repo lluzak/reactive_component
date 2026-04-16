@@ -208,14 +208,24 @@ export default class extends Controller {
           if (el === this.element) return
           const ctrl = this.application.getControllerForElementAndIdentifier(el, "reactive-renderer")
           if (!ctrl?.clientState) return
+          let changed = false
           for (const key of Object.keys(updates)) {
-            if (ctrl.clientState[key]) ctrl.clientState[key] = false
+            if (ctrl.clientState[key]) {
+              ctrl.clientState[key] = false
+              changed = true
+            }
+          }
+          if (changed && ctrl.lastServerData && ctrl.renderFn) {
+            requestAnimationFrame(() => ctrl.render({ ...ctrl.lastServerData, ...ctrl.clientState }))
           }
         })
       }
     }
 
     Object.assign(this.clientState, updates)
+    if (this.lastServerData && this.renderFn) {
+      requestAnimationFrame(() => this.render({ ...this.lastServerData, ...this.clientState }))
+    }
   }
 
   morph(newHtml) {

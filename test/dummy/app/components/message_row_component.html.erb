@@ -1,4 +1,4 @@
-<a href="<%= message_path(@message) %>" class="block border-b border-gray-100 hover:bg-gray-50 transition-colors" data-turbo-frame="message_detail" data-turbo-action="advance" data-action="click->reactive-renderer#setState" data-reactive-renderer-selected-param="true" data-reactive-renderer-exclusive-param="true">
+<a href="<%= message_path(@message) %>" class="<%= @selected ? 'block border-b border-gray-100 bg-blue-50 transition-colors' : 'block border-b border-gray-100 hover:bg-gray-50 transition-colors' %>" data-turbo-frame="message_detail" data-turbo-action="advance" data-action="click->reactive-renderer#setState" data-reactive-renderer-selected-param="true" data-reactive-renderer-exclusive-param="true">
   <div class="flex items-start gap-3 p-3">
     <%= tag.div @message.sender.initials, class: ["w-8 h-8 text-xs rounded-full flex items-center justify-center text-white font-medium", avatar_color(@message.sender)] %>
     <div class="flex-1 min-w-0">
