@@ -53,6 +53,9 @@ Add to your Gemfile:
 
 ```ruby
 gem "reactive_component"
+# ruby2js is required until a fixed release ships. The published 5.1.2
+# pins `regexp_parser ~> 2.1.1`, which conflicts with rubocop. Master
+# relaxes it to `~> 2.9`; pin a specific SHA for reproducible builds.
 gem "ruby2js", github: "ruby2js/ruby2js"
 ```
 
