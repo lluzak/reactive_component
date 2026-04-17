@@ -1,0 +1,28 @@
+<%= tag.div id: dom_id(@message, "row"), class: row_classes, data: {controller: "row", row_id_value: @message.id} do %>
+  <div class="rich-row__body">
+    <p class="rich-row__subject"><%= @message.subject %></p>
+    <p class="rich-row__preview"><%= @message.preview(60) %></p>
+
+    <% if @message.labels.any? %>
+      <div class="rich-row__labels">
+        <% @message.labels.each do |label| %>
+          <%= render WrapperComponent.new(data: {label_id: label.id}) do %>
+            <%= label.name %>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+
+    <div class="rich-row__meta">
+      <%= raw status_badge_html %>
+      <span class="rich-row__ago"><%= ago %></span>
+    </div>
+  </div>
+
+  <%= tag.div class: "rich-row__banner", data: {visible: banner_visible?} do %>
+    <% if banner_visible? %>
+      <%= raw sparkle_icon_svg %>
+      <span><%= t("rich_row.needs_attention", default: "Needs attention") %></span>
+    <% end %>
+  <% end %>
+<% end %>

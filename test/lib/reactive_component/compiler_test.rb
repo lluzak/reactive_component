@@ -160,4 +160,97 @@ class ReactiveComponent::CompilerTest < ActiveSupport::TestCase
 
     assert_match(/let \{.*\} = data;/, result[:js_body])
   end
+
+  # --- Full real-world component regression ---
+  #
+  # RichRowComponent (see test/dummy/app/components/rich_row_component.rb)
+  # mirrors the shape of an admin-dashboard ticket/row: outer tag.div block
+  # wrapper, nested tag.div block banner, raw(bare_helper), raw(@ivar_html),
+  # render SubComponent inside a loop, render WrapperComponent with **options
+  # splat, and a mix of helpers and ivar chains. These all went through their
+  # own failure modes in the past — this test is the canary.
+
+  test 'RichRowComponent compiles without raising' do
+    compiled = ReactiveComponent::Compiler.compile(RichRowComponent)
+
+    assert_not_empty compiled[:js_body]
+    assert_not_empty compiled[:fields]
+  end
+
+  test 'RichRowComponent JS body has no bare tag.xxx calls' do
+    js = ReactiveComponent::Compiler.compile(RichRowComponent)[:js_body]
+
+    assert_no_match(/\btag\.\w+\(/, js,
+      "Compiled JS must not reference Ruby's tag builder; use _tag/_tag_open instead")
+  end
+
+  test 'RichRowComponent JS body has no private-field references' do
+    js = ReactiveComponent::Compiler.compile(RichRowComponent)[:js_body]
+    # Strip out string literals before searching — `&#39;`, class names like
+    # `hover:bg-#xyz`, and Stimulus action strings like `click->#foo` would
+    # otherwise create false positives.
+    stripped = js.gsub(/"(?:\\.|[^"\\])*"/, '""')
+                 .gsub(/'(?:\\.|[^'\\])*'/, "''")
+                 .gsub(/`(?:\\.|[^`\\])*`/m, '``')
+
+    assert_no_match(/#[a-z_][a-zA-Z0-9_]*/, stripped,
+      "Compiled JS must not contain `#ident` private-field refs outside strings")
+  end
+
+  test 'RichRowComponent JS body has no leftover @ivar references' do
+    js = ReactiveComponent::Compiler.compile(RichRowComponent)[:js_body]
+
+    assert_no_match(/@\w+/, js,
+      'All @ivar references should be extracted to server-computed fields')
+  end
+
+  test 'RichRowComponent extracts raw(bare_helper) calls' do
+    compiled = ReactiveComponent::Compiler.compile(RichRowComponent)
+    sources = compiled[:expressions].values
+
+    assert sources.any? { |s| s.include?('status_badge_html') },
+      "Expected status_badge_html to be extracted, got: #{sources}"
+    assert sources.any? { |s| s.include?('sparkle_icon_svg') },
+      "Expected sparkle_icon_svg to be extracted, got: #{sources}"
+  end
+
+  test 'RichRowComponent extracts tag block body expressions for per-field reactivity' do
+    compiled = ReactiveComponent::Compiler.compile(RichRowComponent)
+    sources = compiled[:expressions].values
+
+    # Inner expressions of the outer tag.div block should still be extracted
+    # as their own fields, not swallowed into one raw blob.
+    assert sources.any?('@message.subject'),
+      "Expected @message.subject to be individually extracted, got: #{sources}"
+    assert sources.any? { |s| s.include?('preview(60)') },
+      "Expected @message.preview(60) to be individually extracted, got: #{sources}"
+  end
+
+  test 'WrapperComponent (**@options splat) compiles without private-field refs' do
+    js = ReactiveComponent::Compiler.compile(WrapperComponent)[:js_body]
+
+    assert_match(/\.\.\./, js, 'Expected a JS spread (`...`) for the **options splat')
+    assert_no_match(/#options/, js,
+      '`**@options` must not be emitted as the private field `#options`')
+  end
+
+  test 'RichRowComponent compiled JS parses as a valid function body' do
+    js = ReactiveComponent::Compiler.compile(RichRowComponent)[:js_body]
+
+    # new Function() parses the body — if ruby2js emitted broken syntax
+    # (unclosed brackets, private fields outside a class, etc.) this raises.
+    # We use RubyVM::AbstractSyntaxTree only for Ruby, so shell out to node
+    # when it's available; otherwise fall back to a structural smoke check.
+    if system('which node > /dev/null 2>&1')
+      require 'open3'
+      wrapped = "(function(data){#{js}})"
+      _, stderr, status = Open3.capture3('node', '--check', '-', stdin_data: wrapped)
+
+      assert status.success?, "node --check rejected compiled JS:\n#{stderr}\n\nJS:\n#{wrapped[0..1000]}"
+    else
+      # Minimal structural check when node isn't around.
+      assert_equal js.count('{'), js.count('}'), 'Braces should balance'
+      assert_equal js.count('('), js.count(')'), 'Parens should balance'
+    end
+  end
 end
