@@ -181,13 +181,26 @@ module ReactiveComponent
     end
 
     def read_erb(component_class)
-      erb_path = component_class.instance_method(:initialize)
-                                .source_location&.first
-                                &.sub(/\.rb$/, '.html.erb')
+      rb_path = component_class.instance_method(:initialize).source_location&.first
+      raise ArgumentError, "Cannot find source file for #{component_class}" unless rb_path
 
-      raise ArgumentError, "Cannot find ERB template for #{component_class}" unless erb_path && File.exist?(erb_path)
+      erb_path = erb_path_for(rb_path)
+      raise ArgumentError, "Cannot find ERB template for #{component_class}" unless erb_path
 
       File.read(erb_path)
+    end
+
+    # ViewComponent supports both flat (`foo_component.html.erb`) and sidecar
+    # (`foo_component/foo_component.html.erb`) template layouts. Try both.
+    def erb_path_for(rb_path)
+      flat = rb_path.sub(/\.rb\z/, '.html.erb')
+      return flat if File.exist?(flat)
+
+      base = File.basename(rb_path, '.rb')
+      sidecar = File.join(File.dirname(rb_path), base, "#{base}.html.erb")
+      return sidecar if File.exist?(sidecar)
+
+      nil
     end
 
     def strip_function_wrapper(js_function)
