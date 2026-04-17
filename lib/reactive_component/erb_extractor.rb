@@ -315,6 +315,7 @@ module ReactiveComponent
 
     def process_tag_attrs(hash_node)
       pairs = hash_node.children.map do |pair|
+        next process_tag_kwsplat(pair) if ast_node?(pair) && pair.type == :kwsplat
         next pair unless ast_node?(pair) && pair.type == :pair
 
         key_node, value_node = pair.children
@@ -323,6 +324,26 @@ module ReactiveComponent
         s(:pair, js_key, processed_value)
       end
       s(:hash, *pairs)
+    end
+
+    # `tag.span(class: x, **@options)` — extract the splat target as a
+    # server-computed hash and emit `{...options_key}` so the JS spread is
+    # valid (without this, ruby2js would emit `#options`, a private class
+    # field reference that's a syntax error outside a class body).
+    def process_tag_kwsplat(node)
+      inner = node.children[0]
+      return node unless ast_node?(inner)
+
+      if in_block_context? && contains_block_var?(inner)
+        key = record_block_computed(inner)
+        block_var = current_block_context[:var]
+        return s(:kwsplat, s(:send, s(:lvar, block_var), :[], s(:str, key)))
+      end
+      if !contains_lvar?(inner)
+        key = record_extraction(inner)
+        return s(:kwsplat, s(:lvar, key.to_sym))
+      end
+      node
     end
 
     # --- Render component detection ---
