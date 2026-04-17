@@ -19,7 +19,7 @@ require_relative 'dummy/config/environment'
 ActiveRecord::Schema.verbose = false
 ActiveRecord::Tasks::DatabaseTasks.drop_current rescue nil # rubocop:disable Style/RescueModifier
 ActiveRecord::Tasks::DatabaseTasks.create_current
-load File.expand_path('dummy/db/schema.rb', __dir__)
+ActiveRecord::MigrationContext.new(File.expand_path('dummy/db/migrate', __dir__)).migrate
 
 require 'minitest/autorun'
 require 'action_cable/channel/test_case'
