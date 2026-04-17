@@ -161,6 +161,17 @@ class ReactiveComponent::CompilerTest < ActiveSupport::TestCase
     assert_match(/let \{.*\} = data;/, result[:js_body])
   end
 
+  # Walks any nested data structure and returns every leaf value so callers
+  # can assert on what we actually ship to the client.
+  def flatten_leaf_values(value, acc = [])
+    case value
+    when Hash  then value.each_value { |v| flatten_leaf_values(v, acc) }
+    when Array then value.each { |v| flatten_leaf_values(v, acc) }
+    else acc << value
+    end
+    acc
+  end
+
   # --- Full real-world component regression ---
   #
   # RichRowComponent (see test/dummy/app/components/rich_row_component.rb)
@@ -232,6 +243,23 @@ class ReactiveComponent::CompilerTest < ActiveSupport::TestCase
     assert_match(/\.\.\./, js, 'Expected a JS spread (`...`) for the **options splat')
     assert_no_match(/#options/, js,
       '`**@options` must not be emitted as the private field `#options`')
+  end
+
+  test 'RichRowComponent broadcast payload never contains an ActiveRecord instance' do
+    sender = Contact.create!(name: 'Alice', email: 'a@example.com')
+    recipient = Contact.create!(name: 'Bob', email: 'b@example.com')
+    message = Message.create!(
+      sender: sender, recipient: recipient,
+      subject: 'Hello', body: 'World', label: 'inbox', starred: true, read_at: nil
+    )
+
+    data = RichRowComponent.build_data(message)
+    leaf_values = flatten_leaf_values(data)
+
+    ar_leaks = leaf_values.select { |v| defined?(ActiveRecord::Base) && v.is_a?(ActiveRecord::Base) }
+
+    assert_empty ar_leaks,
+      "Broadcast data must not contain raw AR records — shipping them leaks every column (incl. `password_digest`, tokens) to every subscribed client. Leaked: #{ar_leaks.map(&:class).uniq.inspect}"
   end
 
   test 'RichRowComponent compiled JS parses as a valid function body' do

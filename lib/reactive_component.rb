@@ -1,14 +1,14 @@
 # frozen_string_literal: true
 
-require 'active_support/concern'
+require "active_support/concern"
 
-require_relative 'reactive_component/version'
-require_relative 'reactive_component/compiler'
-require_relative 'reactive_component/erb_extractor'
-require_relative 'reactive_component/data_evaluator'
-require_relative 'reactive_component/wrapper'
-require_relative 'reactive_component/broadcastable'
-require_relative 'reactive_component/engine' if defined?(Rails::Engine)
+require_relative "reactive_component/version"
+require_relative "reactive_component/compiler"
+require_relative "reactive_component/erb_extractor"
+require_relative "reactive_component/data_evaluator"
+require_relative "reactive_component/wrapper"
+require_relative "reactive_component/broadcastable"
+require_relative "reactive_component/engine" if defined?(Rails::Engine)
 
 module ReactiveComponent
   extend ActiveSupport::Concern
@@ -38,13 +38,13 @@ module ReactiveComponent
     stream = ReactiveComponent::Wrapper.find_stream_for(self.class, record)
 
     client_state = if self.class._client_state_fields.any?
-                     kwargs = {}
-                     self.class._client_state_fields.each_key do |name|
-                       val = instance_variable_get(:"@#{name}")
-                       kwargs[name] = val unless val.nil?
-                     end
-                     self.class.client_state_values(**kwargs)
-                   end
+      kwargs = {}
+      self.class._client_state_fields.each_key do |name|
+        val = instance_variable_get(:"@#{name}")
+        kwargs[name] = val unless val.nil?
+      end
+      self.class.client_state_values(**kwargs)
+    end
 
     extra_opts = respond_to?(:live_wrapper_options, true) ? live_wrapper_options : {}
 
@@ -55,24 +55,49 @@ module ReactiveComponent
     template_script ? (template_script + wrapped).html_safe : wrapped
   end
 
+  # Coerce an extracted expression's value into something safe to ship over
+  # ActionCable. Broadcast payloads are JSON-serialized and visible to every
+  # connected client — any ActiveRecord record we hand through naively would
+  # leak *every* column (including secrets like `password_digest` and access
+  # tokens) to the browser. So anything we can't serialize as a plain scalar
+  # gets rendered to a string here, and records collapse to `true` so the
+  # common `<% if @record.association %>` truthy-check pattern still works.
+  SAFE_SCALARS = [NilClass, TrueClass, FalseClass, Integer, Float, String, Symbol].freeze
+
+  def self.sanitize_for_broadcast(value)
+    return value if value.nil? || value == true || value == false
+    return value if value.is_a?(Integer) || value.is_a?(Float) || value.is_a?(String)
+    return value.to_s if value.is_a?(Symbol)
+    return value.map { |v| sanitize_for_broadcast(v) } if value.is_a?(Array)
+    return value.transform_values { |v| sanitize_for_broadcast(v) } if value.is_a?(Hash)
+
+    if defined?(ActiveRecord::Base) && value.is_a?(ActiveRecord::Base)
+      Rails.logger.warn("[ReactiveComponent] Extracted expression returned ActiveRecord record #{value.class.name}##{value.id} — shipping `true` instead of attributes. Narrow the ERB to a specific column (e.g. `@record.name` rather than `@record`) to send real data.") if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
+      return true
+    end
+
+    # Arbitrary object: serialize to string rather than risk leaking ivars.
+    value.to_s
+  end
+
   def self.broadcast_for(component_class, record, action:)
     return unless component_class._subscribed_events.include?(action)
 
     config = component_class._broadcast_config
     stream = if config&.dig(:stream)
-               s = config[:stream]
-               s.is_a?(Proc) ? s.call(record) : s
-             else
-               record
-             end
+      s = config[:stream]
+      s.is_a?(Proc) ? s.call(record) : s
+    else
+      record
+    end
 
     case action
     when :update
       Channel.broadcast_data(stream, action: :update, data: component_class.build_data(record))
     when :destroy
       Channel.broadcast_data(stream, action: :destroy, data: {
-                               'id' => record.id, 'dom_id' => component_class.dom_id_for(record)
-                             })
+        "id" => record.id, "dom_id" => component_class.dom_id_for(record)
+      })
     when :create
       target = config&.dig(:prepend_target)
       return unless target
@@ -90,14 +115,25 @@ module ReactiveComponent
       self._subscribed_events = Array(only).map(&:to_sym)
 
       component_class = self
-      ActiveSupport.on_load(:active_record) do
+
+      # Wire up the model to broadcast when it changes.
+      # We need to handle two cases:
+      # 1. ActiveRecord isn't loaded yet - use on_load hook
+      # 2. ActiveRecord is already loaded - wire up immediately
+      wire_up_model = lambda do
         model_class = component_class.live_model_class
-        next unless model_class
+        return unless model_class
 
         model_class.include(ReactiveComponent::Broadcastable)
         model_class.register_reactive_component(component_class)
       rescue NameError
         # model class not yet defined — wiring skipped
+      end
+
+      if defined?(ActiveRecord::Base)
+        wire_up_model.call
+      else
+        ActiveSupport.on_load(:active_record) { wire_up_model.call }
       end
     end
 
@@ -118,7 +154,7 @@ module ReactiveComponent
 
     def client_state(name, default: nil)
       self._client_state_fields = _client_state_fields.merge(
-        name.to_sym => { default: default }
+        name.to_sym => {default: default}
       )
     end
 
@@ -130,13 +166,13 @@ module ReactiveComponent
 
     def live_action(action_name, params: [])
       self._live_actions = _live_actions.merge(
-        action_name.to_sym => { params: Array(params).map(&:to_sym) }
+        action_name.to_sym => {params: Array(params).map(&:to_sym)}
       )
     end
 
     def live_action_token(record)
       live_action_verifier.generate(
-        { c: name, m: record.class.name, r: record.id },
+        {c: name, m: record.class.name, r: record.id},
         purpose: :reactive_component_action
       )
     end
@@ -168,10 +204,10 @@ module ReactiveComponent
 
     def encoded_template
       @encoded_template ||= if ReactiveComponent.debug
-                              compiled_template_js
-                            else
-                              Base64.strict_encode64(compiled_template_js)
-                            end
+        compiled_template_js
+      else
+        Base64.strict_encode64(compiled_template_js)
+      end
     end
 
     def template_element_id
@@ -206,10 +242,10 @@ module ReactiveComponent
 
       compiled_data[:expressions].each do |var_name, ruby_source|
         data[var_name] = if collection_computed.key?(var_name)
-                           evaluator.evaluate_collection(ruby_source, collection_computed[var_name])
-                         else
-                           evaluator.evaluate(ruby_source)
-                         end
+          evaluator.evaluate_collection(ruby_source, collection_computed[var_name])
+        else
+          evaluator.evaluate(ruby_source)
+        end
       end
       compiled_data[:simple_ivars].each do |ivar_name|
         data[ivar_name] = kwargs[ivar_name.to_sym] if kwargs.key?(ivar_name.to_sym)
@@ -223,32 +259,36 @@ module ReactiveComponent
       collection_computed = compiled_data[:collection_computed] || {}
 
       compiled_data[:expressions].each do |var_name, ruby_source|
-        data[var_name] = if collection_computed.key?(var_name)
-                           evaluator.evaluate_collection(ruby_source, collection_computed[var_name])
-                         else
-                           evaluator.evaluate(ruby_source)
-                         end
+        value = if collection_computed.key?(var_name)
+          evaluator.evaluate_collection(ruby_source, collection_computed[var_name])
+        else
+          evaluator.evaluate(ruby_source)
+        end
+        data[var_name] = ReactiveComponent.sanitize_for_broadcast(value)
       end
 
       compiled_data[:simple_ivars].each do |ivar_name|
-        data[ivar_name] = kwargs[ivar_name.to_sym] if kwargs.key?(ivar_name.to_sym)
+        data[ivar_name] = ReactiveComponent.sanitize_for_broadcast(kwargs[ivar_name.to_sym]) if kwargs.key?(ivar_name.to_sym)
       end
 
       (compiled_data[:nested_components] || {}).each do |key, info|
         klass = info[:class_name].constantize
         kwargs_values = {}
         info[:kwargs].each do |kwarg_name, ruby_source|
+          # Nested-component kwargs keep full objects — the child evaluator
+          # needs them to compute its own extracted fields. Only the fields
+          # that actually ship to the client go through sanitize_for_broadcast.
           kwargs_values[kwarg_name.to_sym] = evaluator.evaluate(ruby_source)
         end
         data[key] = if klass.respond_to?(:build_data_for_nested)
-                      klass.build_data_for_nested(**kwargs_values)
-                    else
-                      ReactiveComponent::Compiler.build_data_for_nested(klass, **kwargs_values)
-                    end
+          klass.build_data_for_nested(**kwargs_values)
+        else
+          ReactiveComponent::Compiler.build_data_for_nested(klass, **kwargs_values)
+        end
       end
 
-      data['id'] = record.id
-      data['dom_id'] = dom_id_for(record)
+      data["id"] = record.id
+      data["dom_id"] = dom_id_for(record)
       data
     end
 

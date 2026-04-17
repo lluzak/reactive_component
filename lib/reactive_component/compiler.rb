@@ -190,15 +190,16 @@ module ReactiveComponent
       collection_computed = compiled[:collection_computed] || {}
 
       compiled[:expressions].each do |var_name, ruby_source|
-        data[var_name] = if collection_computed.key?(var_name)
-                           evaluator.evaluate_collection(ruby_source, collection_computed[var_name])
-                         else
-                           evaluator.evaluate(ruby_source)
-                         end
+        value = if collection_computed.key?(var_name)
+                  evaluator.evaluate_collection(ruby_source, collection_computed[var_name])
+                else
+                  evaluator.evaluate(ruby_source)
+                end
+        data[var_name] = ReactiveComponent.sanitize_for_broadcast(value)
       end
 
       compiled[:simple_ivars].each do |ivar_name|
-        data[ivar_name] = kwargs[ivar_name.to_sym] if kwargs.key?(ivar_name.to_sym)
+        data[ivar_name] = ReactiveComponent.sanitize_for_broadcast(kwargs[ivar_name.to_sym]) if kwargs.key?(ivar_name.to_sym)
       end
 
       data
