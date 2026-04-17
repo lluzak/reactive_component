@@ -363,4 +363,67 @@ class ReactiveComponent::ErbExtractorTest < ActiveSupport::TestCase
     assert_match(/_tag_open\(\s*"div"/, result[:js])
     assert_no_match(/\btag\.div\b/, result[:js])
   end
+
+  # --- Bug: bare ivar output left as undefined JS identifier ---
+
+  test 'bare ivar output is reachable from the data payload' do
+    result = compile_erb('<%= @initials %>')
+    fn_sig = result[:js][/function render\(\{[^}]*\}\)/]
+
+    # ruby2js emits the stripped name `initials` in its destructure. Our
+    # build_data must feed it — either directly (as a simple_ivar) or via
+    # an extracted expression.
+    assert_includes fn_sig, 'initials', "Expected `initials` to appear in the destructure, got: #{fn_sig}"
+  end
+
+  test 'bare ivar AND chained ivar usage both available' do
+    # Historically the chain "consumed" the ivar, so the bare reference
+    # landed as an undefined identifier. The ruby2js destructure now has to
+    # carry both `initials` (for the bare ref) and the extracted chain key.
+    result = compile_erb('<%= @initials %> - <%= @initials.present? %>')
+
+    assert_match(/function render\(\{[^}]*initials[^}]*\}\)/, result[:js])
+    sources = result[:extraction][:expressions].values
+
+    assert(sources.any? { |s| s.include?('@initials.present?') })
+  end
+
+  test 'bare helper method call is extracted as server-computed field' do
+    result = compile_erb('<% if banner_visible? %>hi<% end %>')
+    sources = result[:extraction][:expressions].values
+
+    assert sources.any? { |s| s.include?('banner_visible?') },
+      "Expected `banner_visible?` to be extracted, got: #{sources}"
+    # The stripped identifier must not survive in the body — only in the
+    # destructure where it's filled from the extracted field.
+    body_only = result[:js].sub(/function render\([^)]*\)/, '')
+
+    assert_no_match(/\bbanner_visible\b/, body_only)
+  end
+
+  # --- Bug: bare helper calls emitted as undefined JS identifiers ---
+
+  test 'bare helper method call with args is extracted' do
+    result = compile_erb('<%= status_label(@record) %>')
+    sources = result[:extraction][:expressions].values
+
+    assert sources.any? { |s| s.include?('status_label') },
+      "Expected `status_label(...)` to be extracted, got: #{sources}"
+  end
+
+  test 'bare helper inside tag attr value is extracted' do
+    result = compile_erb('<%= tag.div(class: row_classes) { "body" } %>')
+    sources = result[:extraction][:expressions].values
+
+    assert sources.any? { |s| s.include?('row_classes') },
+      "Expected `row_classes` to be extracted, got: #{sources}"
+  end
+
+  test 'bare helper inside nested data hash is extracted' do
+    result = compile_erb('<%= tag.div(data: {visible: banner_visible?}) { } %>')
+    sources = result[:extraction][:expressions].values
+
+    assert sources.any? { |s| s.include?('banner_visible?') },
+      "Expected `banner_visible?` inside data: hash to be extracted, got: #{sources}"
+  end
 end

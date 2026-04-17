@@ -172,6 +172,98 @@ class ReactiveComponent::CompilerTest < ActiveSupport::TestCase
     acc
   end
 
+  # --- Compiled preamble: escapeHTML alias + helper functions ---
+
+  test 'compiled preamble defines escapeHTML alias' do
+    result = compile_erb_source('<%= @x %>')
+
+    assert_match(/function escapeHTML/, result[:js_body],
+      'ruby2js emits bare escapeHTML() calls in some template paths; preamble must define it')
+  end
+
+  test 'compiled preamble defines _tag_open and _tag_close' do
+    result = compile_erb_source('<%= @x %>')
+
+    assert_match(/function _tag_open/, result[:js_body])
+    assert_match(/function _tag_close/, result[:js_body])
+  end
+
+  test 'compiled preamble defines _render_attrs with data: / class: handling' do
+    js = compile_erb_source('<%= @x %>')[:js_body]
+
+    assert_match(/function _render_attrs/, js)
+    # Spot-check the two branches that Rails tag-builder semantics require.
+    assert_match(/_render_class/, js)
+    assert_match(/replace\(\/_\/g/, js)
+  end
+
+  # --- Simple ivars: never dropped when also referenced via a chain ---
+
+  test 'simple_ivars includes every @ivar the template mentions' do
+    erb = '<%= @initials %><%= @initials.present? %><%= @size %>'
+    erb_ruby = Ruby2JS::Erubi.new(erb).src
+    ivars = ReactiveComponent::Compiler.extract_ivar_names(erb_ruby)
+
+    assert_includes ivars, 'initials'
+    assert_includes ivars, 'size'
+  end
+
+  # --- sanitize_for_broadcast: the security gatekeeper ---
+
+  test 'sanitize_for_broadcast passes primitives through unchanged' do
+    assert_nil   ReactiveComponent.sanitize_for_broadcast(nil)
+    assert_equal true,  ReactiveComponent.sanitize_for_broadcast(true)
+    assert_equal false, ReactiveComponent.sanitize_for_broadcast(false)
+    assert_equal 42,    ReactiveComponent.sanitize_for_broadcast(42)
+    assert_equal 3.14,  ReactiveComponent.sanitize_for_broadcast(3.14)
+    assert_equal 'hi',  ReactiveComponent.sanitize_for_broadcast('hi')
+  end
+
+  test 'sanitize_for_broadcast converts Symbol to String' do
+    assert_equal 'foo', ReactiveComponent.sanitize_for_broadcast(:foo)
+  end
+
+  test 'sanitize_for_broadcast recurses into Arrays and Hashes' do
+    assert_equal [1, 'two', 'three'], ReactiveComponent.sanitize_for_broadcast([1, :two, 'three'])
+    assert_equal({ 'a' => 'x', 'b' => [1, 'y'] },
+      ReactiveComponent.sanitize_for_broadcast('a' => :x, 'b' => [1, :y]))
+  end
+
+  test 'sanitize_for_broadcast collapses ActiveRecord records to true (no column leak)' do
+    contact = Contact.create!(name: "Leaky #{SecureRandom.hex(4)}", email: "leaky-#{SecureRandom.hex(4)}@example.com")
+
+    assert_equal(true, ReactiveComponent.sanitize_for_broadcast(contact),
+      'AR record must collapse to `true`, not serialize its columns')
+  end
+
+  test 'sanitize_for_broadcast strips AR records nested inside arrays and hashes' do
+    contact = Contact.create!(name: "Deep #{SecureRandom.hex(4)}", email: "deep-#{SecureRandom.hex(4)}@example.com")
+
+    assert_equal [true, 'x'], ReactiveComponent.sanitize_for_broadcast([contact, 'x'])
+    assert_equal({ 'user' => true }, ReactiveComponent.sanitize_for_broadcast('user' => contact))
+  end
+
+  test 'sanitize_for_broadcast falls back to to_s for arbitrary objects' do
+    object = Class.new { def to_s = 'custom' }.new
+
+    assert_equal 'custom', ReactiveComponent.sanitize_for_broadcast(object)
+  end
+
+  test 'build_data never ships an AR record, even nested inside a collection' do
+    sender = Contact.create!(name: "Alice #{SecureRandom.hex(4)}", email: "a-#{SecureRandom.hex(4)}@example.com")
+    recipient = Contact.create!(name: "Bob #{SecureRandom.hex(4)}", email: "b-#{SecureRandom.hex(4)}@example.com")
+    message = Message.create!(sender: sender, recipient: recipient, subject: 's', body: 'b', label: 'inbox')
+    message.labels << Label.create!(name: "Tag #{SecureRandom.hex(4)}", color: 'red')
+    message.labels << Label.create!(name: "Tag #{SecureRandom.hex(4)}", color: 'blue')
+
+    data = RichRowComponent.build_data(message)
+    leaf_values = flatten_leaf_values(data)
+
+    ar = leaf_values.select { |v| defined?(ActiveRecord::Base) && v.is_a?(ActiveRecord::Base) }
+
+    assert_empty ar, "Broadcast payload must never contain AR records. Leaked: #{ar.map(&:class).uniq.inspect}"
+  end
+
   # --- Full real-world component regression ---
   #
   # RichRowComponent (see test/dummy/app/components/rich_row_component.rb)
