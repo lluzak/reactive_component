@@ -32,5 +32,5 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'rails', '>= 7.1', '< 9'
   spec.add_dependency 'ruby2js', '~> 5.1'
   spec.add_dependency 'turbo-rails', '~> 2.0'
-  spec.add_dependency 'view_component', '~> 3.0'
+  spec.add_dependency 'view_component', '>= 3.0', '< 5'
 end
