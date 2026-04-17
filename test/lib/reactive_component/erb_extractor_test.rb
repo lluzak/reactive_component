@@ -310,4 +310,57 @@ class ReactiveComponent::ErbExtractorTest < ActiveSupport::TestCase
 
     assert_not_empty raw_fields, 'Expected raw field to be recorded'
   end
+
+  # --- raw(bare_helper_call) ---
+
+  test 'raw(bare_method_call) extracts inner as raw server-computed field' do
+    result = compile_erb('<%= raw my_helper %>')
+    sources = result[:extraction][:expressions].values
+    raw_fields = result[:extraction][:raw_fields]
+
+    assert sources.any? { |s| s == 'my_helper' || s == 'my_helper()' },
+           "Expected 'my_helper' to be extracted, got: #{sources}"
+    assert_not_empty raw_fields, 'Expected raw flag on extracted field'
+    assert_no_match(/my_helper/, result[:js])
+  end
+
+  test 'raw(bare_method_with_args) extracts inner as raw' do
+    result = compile_erb('<%= raw icon_svg(size: 24) %>')
+    sources = result[:extraction][:expressions].values
+
+    assert sources.any? { |s| s.include?('icon_svg') },
+           "Expected icon_svg call to be extracted, got: #{sources}"
+    assert_no_match(/icon_svg\(size:/, result[:js])
+  end
+
+  # --- tag.xxx do ... end block form ---
+
+  test 'tag.div block emits _tag_open/_tag_close and preserves inner reactivity' do
+    erb = <<~ERB
+      <%= tag.div class: "wrapper" do %>
+        <span><%= @message.subject %></span>
+      <% end %>
+    ERB
+    result = compile_erb(erb)
+    js = result[:js]
+    sources = result[:extraction][:expressions].values
+
+    assert_match(/_tag_open\(\s*"div"/, js)
+    assert_match(%r{\+= "</div>"}, js)
+    assert_no_match(/\btag\.div\b/, js, 'Raw tag.div call should not appear in JS')
+    assert sources.any?('@message.subject'),
+           "Expected inner expression to still be extracted, got: #{sources}"
+  end
+
+  test 'tag.div block with dynamic class and data attributes' do
+    erb = <<~ERB
+      <%= tag.div id: dom_id(@record), class: ["card", {active: @active}], data: {controller: "x"} do %>
+        <p>body</p>
+      <% end %>
+    ERB
+    result = compile_erb(erb)
+
+    assert_match(/_tag_open\(\s*"div"/, result[:js])
+    assert_no_match(/\btag\.div\b/, result[:js])
+  end
 end

@@ -16,16 +16,49 @@ module ReactiveComponent
     JS
 
     TAG_FN_JS = <<~JS
-      function _tag(name, content, attrs) {
-        let html = '<' + name;
-        if (attrs) {
-          for (let [k, v] of Object.entries(attrs)) {
-            if (v == null || v === false) continue;
-            if (Array.isArray(v)) v = v.filter(Boolean).join(' ');
-            html += ' ' + k + '="' + _escape(String(v)) + '"';
-          }
+      function _render_class(v) {
+        if (v == null || v === false) return '';
+        if (Array.isArray(v)) return v.map(_render_class).filter(Boolean).join(' ');
+        if (typeof v === 'object') {
+          return Object.entries(v).filter(([, on]) => on).map(([name]) => name).join(' ');
         }
-        return html + '>' + _escape(String(content)) + '</' + name + '>';
+        return String(v);
+      }
+      function _render_attrs(attrs) {
+        if (!attrs) return '';
+        let html = '';
+        for (let [k, v] of Object.entries(attrs)) {
+          if (v == null || v === false) continue;
+          if (k === 'class') {
+            const cls = _render_class(v);
+            if (cls) html += ' class="' + _escape(cls) + '"';
+            continue;
+          }
+          if (v === true) { html += ' ' + k; continue; }
+          if (typeof v === 'object' && !Array.isArray(v)) {
+            for (let [dk, dv] of Object.entries(v)) {
+              if (dv == null || dv === false) continue;
+              const dashKey = String(dk).replace(/_/g, '-');
+              if (dv === true) { html += ' ' + k + '-' + dashKey; continue; }
+              html += ' ' + k + '-' + dashKey + '="' + _escape(String(dv)) + '"';
+            }
+            continue;
+          }
+          if (Array.isArray(v)) v = v.filter(Boolean).join(' ');
+          html += ' ' + k + '="' + _escape(String(v)) + '"';
+        }
+        return html;
+      }
+      function _tag(name, content, attrs) {
+        return '<' + name + _render_attrs(attrs) + '>' +
+               (content != null ? _escape(String(content)) : '') +
+               '</' + name + '>';
+      }
+      function _tag_open(name, attrs) {
+        return '<' + name + _render_attrs(attrs) + '>';
+      }
+      function _tag_close(name) {
+        return '</' + name + '>';
       }
     JS
 
