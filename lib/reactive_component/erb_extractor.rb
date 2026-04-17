@@ -95,6 +95,7 @@ module ReactiveComponent
           s(:send, nil, :String, s(:lvar, key.to_sym)))
       end
 
+
       target, method, *args = send_node.children
 
       # raw(expr) -- extract inner expression, mark as raw.
@@ -308,6 +309,14 @@ module ReactiveComponent
         key = record_block_computed(node)
         block_var = current_block_context[:var]
         return s(:send, s(:lvar, block_var), :[], s(:str, key))
+      end
+
+      # Bare helper method call like `class: classes` or
+      # `data: {row_id: row_id(@x)}` — extract as a server-computed field
+      # so the client doesn't see an undefined JS identifier at render time.
+      if node.type == :send && node.children[0].nil? && !contains_lvar?(node)
+        key = record_extraction(node)
+        return s(:lvar, key.to_sym)
       end
 
       process(node)
@@ -584,13 +593,14 @@ module ReactiveComponent
     end
 
     # An expression that can't run in JS and must be server-evaluated.
-    # Covers ivar chains, const chains, and bare helpers referencing ivars.
+    # Covers ivar chains, const chains, and bare helper calls (with or without
+    # args) as long as they don't reference block-local variables.
     def server_evaluable?(node)
       return false unless node && ast_node?(node)
       return false if lvar_only?(node)
 
       ivar_chain?(node) || const_chain?(node) ||
-        (node.type == :send && node.children[0].nil? && !pure_lvar_args?(node))
+        (node.type == :send && node.children[0].nil? && !contains_lvar?(node))
     end
 
     def extractable?(node)
@@ -627,6 +637,11 @@ module ReactiveComponent
       return true if node.type == :lvar
       return false if %i[ivar const].include?(node.type)
       return false unless node.type == :send
+
+      # A `:send` with nil target is a method call on self (e.g. `helper?`),
+      # not a local-variable reference. Ruby's parser would have given us an
+      # `:lvar` if it were a local, so this is always a server-side call.
+      return false if node.children[0].nil?
 
       !contains_ivar?(node) && !contains_const?(node)
     end

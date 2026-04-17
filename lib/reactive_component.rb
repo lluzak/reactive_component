@@ -268,7 +268,8 @@ module ReactiveComponent
       end
 
       compiled_data[:simple_ivars].each do |ivar_name|
-        data[ivar_name] = ReactiveComponent.sanitize_for_broadcast(kwargs[ivar_name.to_sym]) if kwargs.key?(ivar_name.to_sym)
+        value = kwargs.key?(ivar_name.to_sym) ? kwargs[ivar_name.to_sym] : evaluator.evaluate("@#{ivar_name}")
+        data[ivar_name] = ReactiveComponent.sanitize_for_broadcast(value)
       end
 
       (compiled_data[:nested_components] || {}).each do |key, info|

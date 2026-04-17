@@ -13,6 +13,11 @@ module ReactiveComponent
       function _escape(s) {
         return s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
       }
+      // ruby2js emits bare `escapeHTML(value)` calls for some `<%= %>` outputs
+      // (notably ivar reads inside nested-component templates). Our own
+      // `add_html_escaping` post-processor only handles `String(...)` appends,
+      // so alias the name here to make the compiled JS self-contained.
+      function escapeHTML(s) { return _escape(String(s)); }
     JS
 
     TAG_FN_JS = <<~JS
@@ -98,11 +103,13 @@ module ReactiveComponent
       collection_computed = extraction[:collection_computed] || {}
       nested_components = extraction[:nested_components] || {}
 
-      # Simple @ivars not consumed by extraction become JS params directly
-      all_ivars = extract_ivar_names(erb_ruby)
-      consumed_ivars = expressions.values
-                                  .flat_map { |src| src.scan(/@(\w+)/).flatten }.to_set
-      simple_ivars = (all_ivars - consumed_ivars).to_a.sort
+      # Every @ivar the template mentions needs its stripped form (`initials`
+      # for `@initials`) in the JS destructure, because ruby2js emits those
+      # names directly alongside any extracted-expression vars. Don't subtract
+      # ivars that also appear inside extracted expressions — a template that
+      # uses both `<%= @initials %>` and `<%= @initials.present? %>` needs
+      # both `initials` and `v0` on the data object.
+      simple_ivars = extract_ivar_names(erb_ruby).to_a.sort
 
       # Compile nested component templates and embed as JS functions
       nested_functions_js = ''
@@ -199,7 +206,8 @@ module ReactiveComponent
       end
 
       compiled[:simple_ivars].each do |ivar_name|
-        data[ivar_name] = ReactiveComponent.sanitize_for_broadcast(kwargs[ivar_name.to_sym]) if kwargs.key?(ivar_name.to_sym)
+        value = kwargs.key?(ivar_name.to_sym) ? kwargs[ivar_name.to_sym] : evaluator.evaluate("@#{ivar_name}")
+        data[ivar_name] = ReactiveComponent.sanitize_for_broadcast(value)
       end
 
       data

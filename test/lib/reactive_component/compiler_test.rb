@@ -246,8 +246,8 @@ class ReactiveComponent::CompilerTest < ActiveSupport::TestCase
   end
 
   test 'RichRowComponent broadcast payload never contains an ActiveRecord instance' do
-    sender = Contact.create!(name: 'Alice', email: 'a@example.com')
-    recipient = Contact.create!(name: 'Bob', email: 'b@example.com')
+    sender = Contact.create!(name: "Alice #{SecureRandom.hex(4)}", email: "a-#{SecureRandom.hex(4)}@example.com")
+    recipient = Contact.create!(name: "Bob #{SecureRandom.hex(4)}", email: "b-#{SecureRandom.hex(4)}@example.com")
     message = Message.create!(
       sender: sender, recipient: recipient,
       subject: 'Hello', body: 'World', label: 'inbox', starred: true, read_at: nil
@@ -280,5 +280,42 @@ class ReactiveComponent::CompilerTest < ActiveSupport::TestCase
       assert_equal js.count('{'), js.count('}'), 'Braces should balance'
       assert_equal js.count('('), js.count(')'), 'Parens should balance'
     end
+  end
+
+  test 'RichRowComponent compiled JS actually executes with a real payload' do
+    skip 'node not available' unless system('which node > /dev/null 2>&1')
+
+    sender = Contact.create!(name: "Alice #{SecureRandom.hex(4)}", email: "a-#{SecureRandom.hex(4)}@example.com")
+    recipient = Contact.create!(name: "Bob #{SecureRandom.hex(4)}", email: "b-#{SecureRandom.hex(4)}@example.com")
+    message = Message.create!(
+      sender: sender, recipient: recipient,
+      subject: 'Hello', body: 'World', label: 'inbox', starred: true, read_at: nil
+    )
+    label = Label.create!(name: "Urgent #{SecureRandom.hex(4)}", color: 'red')
+    message.labels << label
+
+    js = ReactiveComponent::Compiler.compile(RichRowComponent)[:js_body]
+    data = RichRowComponent.build_data(message)
+
+    # Run the compiled template in node so any `ReferenceError: X is not
+    # defined` bubbles up as a test failure instead of silently breaking
+    # live updates in production.
+    require 'open3'
+    require 'json'
+    script = <<~JS
+      const fn = new Function("data", #{js.to_json});
+      const data = #{data.to_json};
+      try {
+        const html = fn(data);
+        console.log("OK", html.length);
+      } catch (e) {
+        console.log("ERR", e.message);
+        process.exit(1);
+      }
+    JS
+    stdout, stderr, status = Open3.capture3('node', '-e', script)
+
+    assert status.success?, "Compiled template threw at runtime:\n#{stdout}\n#{stderr}"
+    assert_match(/^OK \d+/, stdout)
   end
 end
