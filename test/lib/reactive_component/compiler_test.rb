@@ -223,30 +223,63 @@ class ReactiveComponent::CompilerTest < ActiveSupport::TestCase
     assert_equal 'foo', ReactiveComponent.sanitize_for_broadcast(:foo)
   end
 
-  test 'sanitize_for_broadcast recurses into Arrays and Hashes' do
-    assert_equal [1, 'two', 'three'], ReactiveComponent.sanitize_for_broadcast([1, :two, 'three'])
+  test 'sanitize_for_broadcast recurses into Arrays and Hashes of primitives' do
+    assert_equal [1, 'two', 'three'],
+      ReactiveComponent.sanitize_for_broadcast([1, :two, 'three'])
+
     assert_equal({ 'a' => 'x', 'b' => [1, 'y'] },
-      ReactiveComponent.sanitize_for_broadcast('a' => :x, 'b' => [1, :y]))
+      ReactiveComponent.sanitize_for_broadcast({ a: :x, 'b' => [1, :y] }))
   end
 
-  test 'sanitize_for_broadcast collapses ActiveRecord records to true (no column leak)' do
+  test 'sanitize_for_broadcast raises on an ActiveRecord record with a targeted hint' do
     contact = Contact.create!(name: "Leaky #{SecureRandom.hex(4)}", email: "leaky-#{SecureRandom.hex(4)}@example.com")
 
-    assert_equal(true, ReactiveComponent.sanitize_for_broadcast(contact),
-      'AR record must collapse to `true`, not serialize its columns')
+    err = assert_raises(ReactiveComponent::UnsafeBroadcastValueError) do
+      ReactiveComponent.sanitize_for_broadcast(contact, source: '@user')
+    end
+    assert_match(/@user/, err.message)
+    assert_match(/Contact/, err.message)
+    assert_match(/Narrow the ERB/, err.message)
   end
 
-  test 'sanitize_for_broadcast strips AR records nested inside arrays and hashes' do
+  test 'sanitize_for_broadcast raises on an AR record nested inside an Array' do
     contact = Contact.create!(name: "Deep #{SecureRandom.hex(4)}", email: "deep-#{SecureRandom.hex(4)}@example.com")
 
-    assert_equal [true, 'x'], ReactiveComponent.sanitize_for_broadcast([contact, 'x'])
-    assert_equal({ 'user' => true }, ReactiveComponent.sanitize_for_broadcast('user' => contact))
+    assert_raises(ReactiveComponent::UnsafeBroadcastValueError) do
+      ReactiveComponent.sanitize_for_broadcast([contact, 'x'], source: '@items')
+    end
   end
 
-  test 'sanitize_for_broadcast falls back to to_s for arbitrary objects' do
+  test 'sanitize_for_broadcast raises on an AR record nested inside a Hash value' do
+    contact = Contact.create!(name: "Deep #{SecureRandom.hex(4)}", email: "deep-#{SecureRandom.hex(4)}@example.com")
+
+    assert_raises(ReactiveComponent::UnsafeBroadcastValueError) do
+      ReactiveComponent.sanitize_for_broadcast({ user: contact }, source: '@data')
+    end
+  end
+
+  test 'sanitize_for_broadcast raises on arbitrary objects (no silent to_s)' do
     object = Class.new { def to_s = 'custom' }.new
 
-    assert_equal 'custom', ReactiveComponent.sanitize_for_broadcast(object)
+    err = assert_raises(ReactiveComponent::UnsafeBroadcastValueError) do
+      ReactiveComponent.sanitize_for_broadcast(object, source: '@thing')
+    end
+    assert_match(/not safe to broadcast/, err.message)
+    assert_match(/@thing/, err.message)
+  end
+
+  test 'sanitize_for_broadcast raises on Date/Time with a formatter-specific hint' do
+    err = assert_raises(ReactiveComponent::UnsafeBroadcastValueError) do
+      ReactiveComponent.sanitize_for_broadcast(Time.now, source: '@created_at')
+    end
+    assert_match(/iso8601|time_ago_in_words/, err.message)
+  end
+
+  test 'sanitize_for_broadcast raises with a generic message when no source was provided' do
+    err = assert_raises(ReactiveComponent::UnsafeBroadcastValueError) do
+      ReactiveComponent.sanitize_for_broadcast(Object.new)
+    end
+    assert_match(/an extracted expression/, err.message)
   end
 
   test 'build_data never ships an AR record, even nested inside a collection' do

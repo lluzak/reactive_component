@@ -202,12 +202,12 @@ module ReactiveComponent
                 else
                   evaluator.evaluate(ruby_source)
                 end
-        data[var_name] = ReactiveComponent.sanitize_for_broadcast(value)
+        data[var_name] = ReactiveComponent.sanitize_for_broadcast(value, source: ruby_source)
       end
 
       compiled[:simple_ivars].each do |ivar_name|
         value = kwargs.key?(ivar_name.to_sym) ? kwargs[ivar_name.to_sym] : evaluator.evaluate("@#{ivar_name}")
-        data[ivar_name] = ReactiveComponent.sanitize_for_broadcast(value)
+        data[ivar_name] = ReactiveComponent.sanitize_for_broadcast(value, source: "@#{ivar_name}")
       end
 
       data

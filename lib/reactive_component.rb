@@ -55,30 +55,53 @@ module ReactiveComponent
     template_script ? (template_script + wrapped).html_safe : wrapped
   end
 
-  # Coerce an extracted expression's value into something safe to ship over
-  # ActionCable. Broadcast payloads are JSON-serialized and visible to every
-  # connected client — any ActiveRecord record we hand through naively would
-  # leak *every* column (including secrets like `password_digest` and access
-  # tokens) to the browser. So anything we can't serialize as a plain scalar
-  # gets rendered to a string here, and records collapse to `true` so the
-  # common `<% if @record.association %>` truthy-check pattern still works.
-  SAFE_SCALARS = [NilClass, TrueClass, FalseClass, Integer, Float, String, Symbol].freeze
+  # Raised when an extracted template expression returns something that is
+  # not a primitive — e.g. a full ActiveRecord record, a custom object, or
+  # a Date/Time. Broadcast payloads are JSON-serialized and visible to every
+  # connected client, so letting a record through would leak every column
+  # (including `password_digest` and tokens). Rather than silently coerce,
+  # we raise so the developer fixes the template.
+  class UnsafeBroadcastValueError < StandardError; end
 
-  def self.sanitize_for_broadcast(value)
-    return value if value.nil? || value == true || value == false
+  # Types that are safe to ship verbatim in a broadcast payload. Everything
+  # else must be converted in the template (e.g. `@user.name` instead of
+  # `@user`, `@date.iso8601` instead of `@date`).
+  SAFE_PRIMITIVE_TYPES = [NilClass, TrueClass, FalseClass, Integer, Float, String].freeze
+
+  def self.sanitize_for_broadcast(value, source: nil)
+    return value if value.nil? || value.is_a?(TrueClass) || value.is_a?(FalseClass)
     return value if value.is_a?(Integer) || value.is_a?(Float) || value.is_a?(String)
     return value.to_s if value.is_a?(Symbol)
-    return value.map { |v| sanitize_for_broadcast(v) } if value.is_a?(Array)
-    return value.transform_values { |v| sanitize_for_broadcast(v) } if value.is_a?(Hash)
+    return value.map { |v| sanitize_for_broadcast(v, source: source) } if value.is_a?(Array)
 
-    if defined?(ActiveRecord::Base) && value.is_a?(ActiveRecord::Base)
-      Rails.logger.warn("[ReactiveComponent] Extracted expression returned ActiveRecord record #{value.class.name}##{value.id} — shipping `true` instead of attributes. Narrow the ERB to a specific column (e.g. `@record.name` rather than `@record`) to send real data.") if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
-      return true
+    if value.is_a?(Hash)
+      return value.each_with_object({}) do |(k, v), h|
+        key = k.is_a?(Symbol) ? k.to_s : k
+        unless key.is_a?(String) || key.is_a?(Integer)
+          raise_unsafe!(k, source, context: "Hash key")
+        end
+        h[key] = sanitize_for_broadcast(v, source: source)
+      end
     end
 
-    # Arbitrary object: serialize to string rather than risk leaking ivars.
-    value.to_s
+    raise_unsafe!(value, source)
   end
+
+  def self.raise_unsafe!(value, source, context: 'Extracted expression')
+    label = source ? "`#{source}`" : 'an extracted expression'
+    hint =
+      if defined?(ActiveRecord::Base) && value.is_a?(ActiveRecord::Base)
+        "Narrow the ERB to a specific column (e.g. `#{source || '@record'}.name`) — shipping the record would leak every column over ActionCable."
+      elsif value.is_a?(Time) || value.is_a?(Date) || (defined?(ActiveSupport::TimeWithZone) && value.is_a?(ActiveSupport::TimeWithZone))
+        "Call a formatter in the template (e.g. `#{source}.iso8601` or `time_ago_in_words(#{source})`)."
+      else
+        "Convert the value to a primitive in the template (String, Integer, Float, Boolean, nil, Symbol, or Array/Hash of those) before outputting it."
+      end
+
+    raise UnsafeBroadcastValueError,
+      "[ReactiveComponent] #{context} #{label} returned a #{value.class.name}, which is not safe to broadcast. #{hint}"
+  end
+  private_class_method :raise_unsafe!
 
   def self.broadcast_for(component_class, record, action:)
     return unless component_class._subscribed_events.include?(action)
@@ -264,12 +287,19 @@ module ReactiveComponent
         else
           evaluator.evaluate(ruby_source)
         end
-        data[var_name] = ReactiveComponent.sanitize_for_broadcast(value)
+        data[var_name] = ReactiveComponent.sanitize_for_broadcast(value, source: ruby_source)
       end
 
       compiled_data[:simple_ivars].each do |ivar_name|
+        # The live-model ivar itself (e.g. `@message` when `subscribes_to :message`)
+        # is the subscription key, not a payload field. It's only in the ivar list
+        # because extract_ivar_names sees `@message.subject` etc. — ruby2js never
+        # emits the bare name in the destructure for extracted chains, so don't
+        # ship it and don't sanitize-raise on it.
+        next if live_model_attr && ivar_name == live_model_attr.to_s
+
         value = kwargs.key?(ivar_name.to_sym) ? kwargs[ivar_name.to_sym] : evaluator.evaluate("@#{ivar_name}")
-        data[ivar_name] = ReactiveComponent.sanitize_for_broadcast(value)
+        data[ivar_name] = ReactiveComponent.sanitize_for_broadcast(value, source: "@#{ivar_name}")
       end
 
       (compiled_data[:nested_components] || {}).each do |key, info|
