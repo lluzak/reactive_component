@@ -318,7 +318,9 @@ class ReactiveComponent::ErbExtractorTest < ActiveSupport::TestCase
     sources = result[:extraction][:expressions].values
     raw_fields = result[:extraction][:raw_fields]
 
-    assert sources.any? { |s| s == 'my_helper' || s == 'my_helper()' },
+    expected = ['my_helper', 'my_helper()'].freeze
+
+    assert sources.any? { |s| expected.include?(s) },
            "Expected 'my_helper' to be extracted, got: #{sources}"
     assert_not_empty raw_fields, 'Expected raw flag on extracted field'
     assert_no_match(/my_helper/, result[:js])
@@ -393,7 +395,7 @@ class ReactiveComponent::ErbExtractorTest < ActiveSupport::TestCase
     sources = result[:extraction][:expressions].values
 
     assert sources.any? { |s| s.include?('banner_visible?') },
-      "Expected `banner_visible?` to be extracted, got: #{sources}"
+           "Expected `banner_visible?` to be extracted, got: #{sources}"
     # The stripped identifier must not survive in the body — only in the
     # destructure where it's filled from the extracted field.
     body_only = result[:js].sub(/function render\([^)]*\)/, '')
@@ -408,7 +410,7 @@ class ReactiveComponent::ErbExtractorTest < ActiveSupport::TestCase
     sources = result[:extraction][:expressions].values
 
     assert sources.any? { |s| s.include?('status_label') },
-      "Expected `status_label(...)` to be extracted, got: #{sources}"
+           "Expected `status_label(...)` to be extracted, got: #{sources}"
   end
 
   test 'bare helper inside tag attr value is extracted' do
@@ -416,7 +418,7 @@ class ReactiveComponent::ErbExtractorTest < ActiveSupport::TestCase
     sources = result[:extraction][:expressions].values
 
     assert sources.any? { |s| s.include?('row_classes') },
-      "Expected `row_classes` to be extracted, got: #{sources}"
+           "Expected `row_classes` to be extracted, got: #{sources}"
   end
 
   test 'bare helper inside nested data hash is extracted' do
@@ -424,6 +426,6 @@ class ReactiveComponent::ErbExtractorTest < ActiveSupport::TestCase
     sources = result[:extraction][:expressions].values
 
     assert sources.any? { |s| s.include?('banner_visible?') },
-      "Expected `banner_visible?` inside data: hash to be extracted, got: #{sources}"
+           "Expected `banner_visible?` inside data: hash to be extracted, got: #{sources}"
   end
 end

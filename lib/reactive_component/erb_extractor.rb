@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "ruby2js"
+require 'ruby2js'
 
 module ReactiveComponent
   module ErbExtractor
@@ -36,10 +36,10 @@ module ReactiveComponent
       # (e.g. respond_to? -> "in" operator) in its own process method,
       # bypassing on_send where ErbExtractor normally does extraction.
       if @erb_bufvar && node.type == :send && server_evaluable?(node) &&
-          !contains_lvar?(node) && !(in_block_context? && contains_block_var?(node))
+         !contains_lvar?(node) && !(in_block_context? && contains_block_var?(node))
         if in_block_context? &&
-            current_block_context[:collection_source] == rebuild_source(node) &&
-            current_block_context[:collection_key].nil?
+           current_block_context[:collection_source] == rebuild_source(node) &&
+           current_block_context[:collection_key].nil?
           key = record_collection_extraction(node)
           current_block_context[:collection_key] = key
         else
@@ -92,9 +92,8 @@ module ReactiveComponent
       if send_node.respond_to?(:type) && send_node.type == :const
         key = record_extraction(send_node)
         return s(:op_asgn, s(:lvasgn, @erb_bufvar), :+,
-          s(:send, nil, :String, s(:lvar, key.to_sym)))
+                 s(:send, nil, :String, s(:lvar, key.to_sym)))
       end
-
 
       target, method, *args = send_node.children
 
@@ -137,11 +136,11 @@ module ReactiveComponent
             prop = s(:send, s(:lvar, block_var), :[], s(:str, key))
             fn_name = :"_render_#{class_name.underscore}"
             return s(:op_asgn, s(:lvasgn, @erb_bufvar), :+,
-              s(:send, nil, fn_name, prop))
+                     s(:send, nil, fn_name, prop))
           else
             key = record_nested_component(send_node, class_name)
             return s(:op_asgn, s(:lvasgn, @erb_bufvar), :+,
-              s(:send, nil, :"_render_#{key}", s(:lvar, key.to_sym)))
+                     s(:send, nil, :"_render_#{key}", s(:lvar, key.to_sym)))
           end
         end
       end
@@ -158,7 +157,7 @@ module ReactiveComponent
         return s(:op_asgn, s(:lvasgn, @erb_bufvar), :+, prop) if raw
 
         return s(:op_asgn, s(:lvasgn, @erb_bufvar), :+,
-          s(:send, nil, :String, prop))
+                 s(:send, nil, :String, prop))
 
       end
 
@@ -170,7 +169,7 @@ module ReactiveComponent
         return s(:op_asgn, s(:lvasgn, @erb_bufvar), :+, s(:lvar, key.to_sym)) if raw
 
         return s(:op_asgn, s(:lvasgn, @erb_bufvar), :+,
-          s(:send, nil, :String, s(:lvar, key.to_sym)))
+                 s(:send, nil, :String, s(:lvar, key.to_sym)))
 
       end
 
@@ -190,17 +189,17 @@ module ReactiveComponent
         block_content = extract_block_html(body)
         call_source = rebuild_source(call_node)
         full_source = if block_content
-          # Check if it's a static string or a dynamic expression
-          if block_content.start_with?("[") && block_content.end_with?("].join")
-            # Dynamic content - evaluate the expression
-            "#{call_source} { (#{block_content}).html_safe }"
-          else
-            # Static string content
-            "#{call_source} { #{block_content.inspect}.html_safe }"
-          end
-        else
-          call_source
-        end
+                        # Check if it's a static string or a dynamic expression
+                        if block_content.start_with?('[') && block_content.end_with?('].join')
+                          # Dynamic content - evaluate the expression
+                          "#{call_source} { (#{block_content}).html_safe }"
+                        else
+                          # Static string content
+                          "#{call_source} { #{block_content.inspect}.html_safe }"
+                        end
+                      else
+                        call_source
+                      end
         key = record_extraction(nil, raw: true, source_override: full_source)
         return s(:op_asgn, s(:lvasgn, @erb_bufvar), :+, s(:lvar, key.to_sym))
       end
@@ -274,10 +273,10 @@ module ReactiveComponent
 
       # Separate positional args from keyword hash
       positional = args.dup
-      hash_arg = (ast_node?(positional.last) && positional.last.type == :hash) ? positional.pop : nil
+      hash_arg = ast_node?(positional.last) && positional.last.type == :hash ? positional.pop : nil
       content_node = positional.first
 
-      content_expr = content_node ? process_tag_arg(content_node) : s(:str, "")
+      content_expr = content_node ? process_tag_arg(content_node) : s(:str, '')
 
       if hash_arg
         attrs_expr = process_tag_attrs(hash_arg)
@@ -328,7 +327,7 @@ module ReactiveComponent
         next pair unless ast_node?(pair) && pair.type == :pair
 
         key_node, value_node = pair.children
-        js_key = (ast_node?(key_node) && key_node.type == :sym) ? s(:str, key_node.children[0].to_s) : key_node
+        js_key = ast_node?(key_node) && key_node.type == :sym ? s(:str, key_node.children[0].to_s) : key_node
         processed_value = process_tag_arg(value_node)
         s(:pair, js_key, processed_value)
       end
@@ -348,7 +347,7 @@ module ReactiveComponent
         block_var = current_block_context[:var]
         return s(:kwsplat, s(:send, s(:lvar, block_var), :[], s(:str, key)))
       end
-      if !contains_lvar?(inner)
+      unless contains_lvar?(inner)
         key = record_extraction(inner)
         return s(:kwsplat, s(:lvar, key.to_sym))
       end
@@ -380,7 +379,7 @@ module ReactiveComponent
 
       # If all parts are static strings, return a simple string
       if parts.all? { |p| p[:type] == :static }
-        parts.map { |p| p[:content] }.join
+        parts.pluck(:content).join
       else
         # Mix of static and dynamic - build a string interpolation expression
         expr_parts = parts.map do |part|
@@ -390,7 +389,7 @@ module ReactiveComponent
             "(#{part[:content]}).to_s"
           end
         end
-        "[#{expr_parts.join(", ")}].join"
+        "[#{expr_parts.join(', ')}].join"
       end
     end
 
@@ -412,6 +411,7 @@ module ReactiveComponent
         else
           node.children.each do |child|
             next unless ast_node?(child)
+
             collect_value_part(child, parts)
           end
         end
@@ -423,30 +423,27 @@ module ReactiveComponent
 
       case node.type
       when :str
-        parts << {type: :static, content: node.children[0]}
+        parts << { type: :static, content: node.children[0] }
       when :dstr
         node.children.each do |c|
-          parts << {type: :static, content: c.children[0]} if ast_node?(c) && c.type == :str
+          parts << { type: :static, content: c.children[0] } if ast_node?(c) && c.type == :str
         end
       when :begin
         # Unwrap :begin nodes (parenthesized expressions)
         node.children.each { |c| collect_value_part(c, parts) }
       when :send
         target, method, *args = node.children
-        # Handle .freeze wrapper (static strings)
-        if method == :freeze && ast_node?(target)
-          collect_value_part(target, parts)
-        # Handle .to_s wrapper (dynamic expressions)
-        elsif method == :to_s && ast_node?(target)
+        # Handle .freeze wrapper (static strings) and .to_s wrapper (dynamic expressions)
+        if %i[freeze to_s].include?(method) && ast_node?(target)
           collect_value_part(target, parts)
         # Handle raw(expr) - extract the inner expression
         elsif target.nil? && method == :raw && args.length == 1
           inner_source = rebuild_source(args.first)
-          parts << {type: :dynamic, content: inner_source}
+          parts << { type: :dynamic, content: inner_source }
         # Handle other method calls that produce content
         elsif server_evaluable?(node) || (target.nil? && !args.empty?)
           source = rebuild_source(node)
-          parts << {type: :dynamic, content: source}
+          parts << { type: :dynamic, content: source }
         end
       end
     end
@@ -491,7 +488,7 @@ module ReactiveComponent
       return existing[0] if existing
 
       key = next_key
-      computed[key] = {source: source, raw: raw}
+      computed[key] = { source: source, raw: raw }
       key
     end
 
@@ -530,7 +527,7 @@ module ReactiveComponent
       computed[key] = {
         source: nil,
         raw: true,
-        nested_component: {class_name: class_name, kwargs: kwargs}
+        nested_component: { class_name: class_name, kwargs: kwargs }
       }
       key
     end
@@ -577,10 +574,10 @@ module ReactiveComponent
       parts = []
       current = node
       while current && ast_node?(current) && current.type == :send
-        parts.unshift(current.children[1].to_s.delete_suffix("?"))
+        parts.unshift(current.children[1].to_s.delete_suffix('?'))
         current = current.children[0]
       end
-      parts.join("_")
+      parts.join('_')
     end
 
     def const_chain?(node)
@@ -679,7 +676,7 @@ module ReactiveComponent
     # --- Source reconstruction ---
 
     def rebuild_source(node)
-      return "" unless ast_node?(node)
+      return '' unless ast_node?(node)
 
       case node.type
       when :ivar, :lvar, :int, :float then node.children[0].to_s
@@ -687,12 +684,12 @@ module ReactiveComponent
         parent, name = node.children
         parent ? "#{rebuild_source(parent)}::#{name}" : name.to_s
       when :str then node.children[0].inspect
-      when :true then "true"
-      when :false then "false"
-      when :nil then "nil"
+      when :true then 'true'
+      when :false then 'false'
+      when :nil then 'nil'
       when :sym then ":#{node.children[0]}"
       when :hash
-        node.children.map { |pair| rebuild_source(pair) }.join(", ")
+        node.children.map { |pair| rebuild_source(pair) }.join(', ')
       when :kwsplat
         "**#{rebuild_source(node.children[0])}"
       when :block_pass
@@ -709,14 +706,14 @@ module ReactiveComponent
       when :send
         target, method, *args = node.children
         recv = target ? rebuild_source(target) : nil
-        args_src = args.map { |a| rebuild_source(a) }.join(", ")
+        args_src = args.map { |a| rebuild_source(a) }.join(', ')
         method_str = method.to_s
         if recv
           args.empty? ? "#{recv}.#{method_str}" : "#{recv}.#{method_str}(#{args_src})"
         else
           "#{method_str}(#{args_src})"
         end
-      else ""
+      else ''
       end
     end
 

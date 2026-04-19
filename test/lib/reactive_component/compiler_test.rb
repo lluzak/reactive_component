@@ -178,7 +178,7 @@ class ReactiveComponent::CompilerTest < ActiveSupport::TestCase
     result = compile_erb_source('<%= @x %>')
 
     assert_match(/function escapeHTML/, result[:js_body],
-      'ruby2js emits bare escapeHTML() calls in some template paths; preamble must define it')
+                 'ruby2js emits bare escapeHTML() calls in some template paths; preamble must define it')
   end
 
   test 'compiled preamble defines _tag_open and _tag_close' do
@@ -194,7 +194,7 @@ class ReactiveComponent::CompilerTest < ActiveSupport::TestCase
     assert_match(/function _render_attrs/, js)
     # Spot-check the two branches that Rails tag-builder semantics require.
     assert_match(/_render_class/, js)
-    assert_match(/replace\(\/_\/g/, js)
+    assert_match(%r{replace\(/_/g}, js)
   end
 
   # --- Simple ivars: never dropped when also referenced via a chain ---
@@ -211,11 +211,11 @@ class ReactiveComponent::CompilerTest < ActiveSupport::TestCase
   # --- sanitize_for_broadcast: the security gatekeeper ---
 
   test 'sanitize_for_broadcast passes primitives through unchanged' do
-    assert_nil   ReactiveComponent.sanitize_for_broadcast(nil)
-    assert_equal true,  ReactiveComponent.sanitize_for_broadcast(true)
-    assert_equal false, ReactiveComponent.sanitize_for_broadcast(false)
-    assert_equal 42,    ReactiveComponent.sanitize_for_broadcast(42)
-    assert_equal 3.14,  ReactiveComponent.sanitize_for_broadcast(3.14)
+    assert_nil ReactiveComponent.sanitize_for_broadcast(nil)
+    assert ReactiveComponent.sanitize_for_broadcast(true)
+    assert_not ReactiveComponent.sanitize_for_broadcast(false)
+    assert_equal 42, ReactiveComponent.sanitize_for_broadcast(42)
+    assert_in_delta(3.14, ReactiveComponent.sanitize_for_broadcast(3.14))
     assert_equal 'hi',  ReactiveComponent.sanitize_for_broadcast('hi')
   end
 
@@ -225,10 +225,10 @@ class ReactiveComponent::CompilerTest < ActiveSupport::TestCase
 
   test 'sanitize_for_broadcast recurses into Arrays and Hashes of primitives' do
     assert_equal [1, 'two', 'three'],
-      ReactiveComponent.sanitize_for_broadcast([1, :two, 'three'])
+                 ReactiveComponent.sanitize_for_broadcast([1, :two, 'three'])
 
     assert_equal({ 'a' => 'x', 'b' => [1, 'y'] },
-      ReactiveComponent.sanitize_for_broadcast({ a: :x, 'b' => [1, :y] }))
+                 ReactiveComponent.sanitize_for_broadcast({ a: :x, 'b' => [1, :y] }))
   end
 
   test 'sanitize_for_broadcast raises on an ActiveRecord record with a targeted hint' do
@@ -270,7 +270,7 @@ class ReactiveComponent::CompilerTest < ActiveSupport::TestCase
 
   test 'sanitize_for_broadcast raises on Date/Time with a formatter-specific hint' do
     err = assert_raises(ReactiveComponent::UnsafeBroadcastValueError) do
-      ReactiveComponent.sanitize_for_broadcast(Time.now, source: '@created_at')
+      ReactiveComponent.sanitize_for_broadcast(Time.zone.now, source: '@created_at')
     end
     assert_match(/iso8601|time_ago_in_words/, err.message)
   end
@@ -317,7 +317,7 @@ class ReactiveComponent::CompilerTest < ActiveSupport::TestCase
     js = ReactiveComponent::Compiler.compile(RichRowComponent)[:js_body]
 
     assert_no_match(/\btag\.\w+\(/, js,
-      "Compiled JS must not reference Ruby's tag builder; use _tag/_tag_open instead")
+                    "Compiled JS must not reference Ruby's tag builder; use _tag/_tag_open instead")
   end
 
   test 'RichRowComponent JS body has no private-field references' do
@@ -330,14 +330,14 @@ class ReactiveComponent::CompilerTest < ActiveSupport::TestCase
                  .gsub(/`(?:\\.|[^`\\])*`/m, '``')
 
     assert_no_match(/#[a-z_][a-zA-Z0-9_]*/, stripped,
-      "Compiled JS must not contain `#ident` private-field refs outside strings")
+                    'Compiled JS must not contain `#ident` private-field refs outside strings')
   end
 
   test 'RichRowComponent JS body has no leftover @ivar references' do
     js = ReactiveComponent::Compiler.compile(RichRowComponent)[:js_body]
 
     assert_no_match(/@\w+/, js,
-      'All @ivar references should be extracted to server-computed fields')
+                    'All @ivar references should be extracted to server-computed fields')
   end
 
   test 'RichRowComponent extracts raw(bare_helper) calls' do
@@ -345,9 +345,9 @@ class ReactiveComponent::CompilerTest < ActiveSupport::TestCase
     sources = compiled[:expressions].values
 
     assert sources.any? { |s| s.include?('status_badge_html') },
-      "Expected status_badge_html to be extracted, got: #{sources}"
+           "Expected status_badge_html to be extracted, got: #{sources}"
     assert sources.any? { |s| s.include?('sparkle_icon_svg') },
-      "Expected sparkle_icon_svg to be extracted, got: #{sources}"
+           "Expected sparkle_icon_svg to be extracted, got: #{sources}"
   end
 
   test 'RichRowComponent extracts tag block body expressions for per-field reactivity' do
@@ -357,9 +357,9 @@ class ReactiveComponent::CompilerTest < ActiveSupport::TestCase
     # Inner expressions of the outer tag.div block should still be extracted
     # as their own fields, not swallowed into one raw blob.
     assert sources.any?('@message.subject'),
-      "Expected @message.subject to be individually extracted, got: #{sources}"
+           "Expected @message.subject to be individually extracted, got: #{sources}"
     assert sources.any? { |s| s.include?('preview(60)') },
-      "Expected @message.preview(60) to be individually extracted, got: #{sources}"
+           "Expected @message.preview(60) to be individually extracted, got: #{sources}"
   end
 
   test 'WrapperComponent (**@options splat) compiles without private-field refs' do
@@ -367,7 +367,7 @@ class ReactiveComponent::CompilerTest < ActiveSupport::TestCase
 
     assert_match(/\.\.\./, js, 'Expected a JS spread (`...`) for the **options splat')
     assert_no_match(/#options/, js,
-      '`**@options` must not be emitted as the private field `#options`')
+                    '`**@options` must not be emitted as the private field `#options`')
   end
 
   test 'RichRowComponent broadcast payload never contains an ActiveRecord instance' do
@@ -384,7 +384,9 @@ class ReactiveComponent::CompilerTest < ActiveSupport::TestCase
     ar_leaks = leaf_values.select { |v| defined?(ActiveRecord::Base) && v.is_a?(ActiveRecord::Base) }
 
     assert_empty ar_leaks,
-      "Broadcast data must not contain raw AR records — shipping them leaks every column (incl. `password_digest`, tokens) to every subscribed client. Leaked: #{ar_leaks.map(&:class).uniq.inspect}"
+                 'Broadcast data must not contain raw AR records — shipping them leaks every column ' \
+                 '(incl. `password_digest`, tokens) to every subscribed client. ' \
+                 "Leaked: #{ar_leaks.map(&:class).uniq.inspect}"
   end
 
   test 'RichRowComponent compiled JS parses as a valid function body' do
@@ -399,7 +401,7 @@ class ReactiveComponent::CompilerTest < ActiveSupport::TestCase
       wrapped = "(function(data){#{js}})"
       _, stderr, status = Open3.capture3('node', '--check', '-', stdin_data: wrapped)
 
-      assert status.success?, "node --check rejected compiled JS:\n#{stderr}\n\nJS:\n#{wrapped[0..1000]}"
+      assert_predicate status, :success?, "node --check rejected compiled JS:\n#{stderr}\n\nJS:\n#{wrapped[0..1000]}"
     else
       # Minimal structural check when node isn't around.
       assert_equal js.count('{'), js.count('}'), 'Braces should balance'
@@ -440,7 +442,7 @@ class ReactiveComponent::CompilerTest < ActiveSupport::TestCase
     JS
     stdout, stderr, status = Open3.capture3('node', '-e', script)
 
-    assert status.success?, "Compiled template threw at runtime:\n#{stdout}\n#{stderr}"
+    assert_predicate status, :success?, "Compiled template threw at runtime:\n#{stdout}\n#{stderr}"
     assert_match(/^OK \d+/, stdout)
   end
 end
