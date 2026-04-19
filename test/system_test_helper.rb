@@ -4,24 +4,16 @@ require 'test_helper'
 require 'capybara/minitest'
 require 'capybara/cuprite'
 
-Capybara.register_driver :cuprite do |app|
-  Capybara::Cuprite::Driver.new(
-    app,
-    window_size: [1280, 800],
-    headless: true,
-    process_timeout: 30,
-    timeout: 15,
-    js_errors: true
-  )
-end
-
-Capybara.default_driver = :cuprite
-Capybara.javascript_driver = :cuprite
 Capybara.server = :puma, { Silent: true }
 Capybara.default_max_wait_time = 5
 
 class SystemTestCase < ActionDispatch::SystemTestCase
-  driven_by :cuprite
+  driven_by :cuprite, screen_size: [1280, 800], options: {
+    headless: true,
+    process_timeout: 60,
+    timeout: 15,
+    js_errors: true
+  }
 
   def setup
     seed_data
