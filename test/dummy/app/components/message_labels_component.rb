@@ -13,7 +13,7 @@ class MessageLabelsComponent < ApplicationComponent
 
   def initialize(message:)
     @message = message
-    @labels = Label.order(:name)
+    @labels = Label.order(:name).map { |l| { id: l.id, name: l.name, color: l.color } }
   end
 
   private
@@ -45,22 +45,22 @@ class MessageLabelsComponent < ApplicationComponent
   end
 
   def label_action(message, label)
-    message.label_ids.include?(label.id) ? "remove_label" : "add_label"
+    message.label_ids.include?(label[:id]) ? "remove_label" : "add_label"
   end
 
   def label_css(message, label)
-    if message.label_ids.include?(label.id)
-      LABEL_COLORS.fetch(label.color, LABEL_COLORS["blue"])
+    if message.label_ids.include?(label[:id])
+      LABEL_COLORS.fetch(label[:color], LABEL_COLORS["blue"])
     else
       "bg-gray-100 text-gray-500 hover:bg-gray-200"
     end
   end
 
   def label_text(message, label)
-    if message.label_ids.include?(label.id)
-      "#{label.name} \u00D7"
+    if message.label_ids.include?(label[:id])
+      "#{label[:name]} \u00D7"
     else
-      label.name
+      label[:name]
     end
   end
 end
