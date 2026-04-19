@@ -10,6 +10,7 @@ module ReactiveComponent
     include ActionView::Helpers::NumberHelper
     include ActionView::Helpers::TagHelper
     include ActionView::Helpers::OutputSafetyHelper
+    include ActionView::Helpers::TranslationHelper
     include ActionView::RecordIdentifier
     include ActionView::Helpers::UrlHelper
 
@@ -57,8 +58,13 @@ module ReactiveComponent
       nil
     end
 
-    def render(renderable)
+    def render(renderable, &block)
       renderer = ReactiveComponent.renderer || ActionController::Base
+      if block
+        # ViewComponent needs block content set via with_content
+        block_result = yield
+        renderable.with_content(block_result) if renderable.respond_to?(:with_content)
+      end
       renderer.render(renderable, layout: false)
     end
 
