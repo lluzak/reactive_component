@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.4.1] - 2026-05-29
+
+### Changed
+- Bumped Rails to 8.1.3 (and matching patches across the 8.1.x stack)
+  in development and test gemfiles.
+- Upgraded `view_component` to 4.11.0 — full test suite (119 runs,
+  308 assertions) green on Rails 7.1, 7.2, and 8.0 appraisals.
+- Refreshed transitive dependencies (rack 3.2.6, nokogiri 1.19.3,
+  loofah 2.25.1, zeitwerk 2.8.2, propshaft 1.3.2, sqlite3 2.9.4,
+  rubocop 1.86.2, etc.).
+
 ## [0.4.0] - 2026-04-18
 
 ### Security
