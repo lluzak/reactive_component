@@ -75,7 +75,7 @@ See the [Installation guide](https://lluzak.github.io/reactive_component/install
 
 ## How It Works
 
-ReactiveComponent compiles your ERB templates into JavaScript render functions at boot time: [Prism](https://github.com/ruby/prism) parses the template, the extractor lifts every Ruby expression to the server, and a small emitter turns the remaining skeleton — literals, conditionals, loops — into JavaScript. When a model changes:
+ReactiveComponent compiles your ERB templates into JavaScript render functions at boot time: [Prism](https://github.com/ruby/prism) parses the template, and one pass over its tree lifts every Ruby expression to the server and turns the remaining skeleton — literals, conditionals, loops — into JavaScript. When a model changes:
 
 1. `after_commit` callbacks (auto-wired by `subscribes_to`) trigger a broadcast.
 2. The server evaluates only the dynamic expressions from your template and sends compact JSON data over ActionCable.

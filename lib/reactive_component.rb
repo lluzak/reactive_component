@@ -4,7 +4,6 @@ require 'active_support/concern'
 
 require_relative 'reactive_component/version'
 require_relative 'reactive_component/compiler'
-require_relative 'reactive_component/erb_extractor'
 require_relative 'reactive_component/data_evaluator'
 require_relative 'reactive_component/wrapper'
 require_relative 'reactive_component/broadcastable'

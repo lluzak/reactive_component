@@ -71,6 +71,5 @@ ReactiveComponent depends on the following gems (declared in the gemspec):
 | `rails` | >= 7.1 | Framework |
 | `view_component` | any | Base component library |
 | `turbo-rails` | any | Stream signing and Turbo integration |
-| `prism` | ~> 1.0 | Parsing ERB-compiled Ruby (and instance-variable discovery) |
-| `parser` | >= 3.3 | The syntax-tree classes the extractor walks (Prism translates into them) |
+| `prism` | ~> 1.0 | Parsing the ERB-compiled Ruby; the extractor and emitter walk its tree |
 | `erubi` | ~> 1.11 | ERB to Ruby |

@@ -3,15 +3,19 @@
 ## [0.5.0] - 2026-09-05
 
 ### Changed
-- **ruby2js is gone.** Templates are parsed by Prism (translated into the
-  parser-gem tree the extractor walks) and emitted by the gem's own
-  `Transpiler` — a whitelist over the template skeleton (literals, data
-  reads, `if`/`unless`/ternaries, boolean and comparison operators, `.each`,
-  and the `_tag*`/`_render_*` helpers). Anything else raises
+- **ruby2js is gone; the compiler runs on Prism's own tree.** One pass
+  over the Prism AST lifts every Ruby expression to a server-evaluated
+  data key and emits the template skeleton as JavaScript — a whitelist
+  (literals, data reads, `if`/`unless`/ternaries, boolean and comparison
+  operators, `.each`, the `_tag*`/`_render_*` helpers). Anything else raises
   `ReactiveComponent::CompileError` naming the source, where ruby2js used
   to guess (`present?` became a `.present` property read). Dependencies:
-  `ruby2js` out; `parser` and `erubi` in. The compiled JS keeps the same
-  shape (`function render({ … })`, `_buf +=`, `for..of`, `_tag_open(...)`).
+  `ruby2js` out, `erubi` in; no `parser` gem. The compiled JS keeps the
+  same shape (`function render({ … })`, `_buf +=`, `for..of`,
+  `_tag_open(...)`).
+- `"#{@x}!"` — an interpolated string with an ivar or helper — is now
+  server-evaluated and escaped like any other expression, instead of being
+  emitted as an unescaped template literal.
 - The extractor now lifts a chain rooted at a self call
   (`content.present?`, `current_user.name`) whole, like an ivar chain.
 - **Wrapper ids are now component-prefixed by default** —
