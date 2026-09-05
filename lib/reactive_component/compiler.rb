@@ -90,13 +90,17 @@ module ReactiveComponent
         end
       end
 
-      js_function = Ruby2JS.convert(
-        erb_ruby,
-        filters: [:erb, :functions, ReactiveComponent::ErbExtractor],
-        eslevel: 2022,
-        extraction: extraction,
-        nestable_checker: nestable_checker
-      ).to_s
+      js_function = begin
+        Ruby2JS.convert(
+          erb_ruby,
+          filters: [:erb, :functions, ReactiveComponent::ErbExtractor],
+          eslevel: 2022,
+          extraction: extraction,
+          nestable_checker: nestable_checker
+        ).to_s
+      rescue ReactiveComponent::CompileError => e
+        raise ReactiveComponent::CompileError, "#{component_class.name}: #{e.message}"
+      end
 
       expressions = extraction[:expressions] || {}
       raw_fields = extraction[:raw_fields] || Set.new

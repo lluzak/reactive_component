@@ -276,6 +276,17 @@ class ReactiveComponent::ErbExtractorTest < ActiveSupport::TestCase
     assert_equal ['label.name'], output.pluck(:source)
   end
 
+  test 'a loop variable the client could never resolve fails at compile time, not in a browser' do
+    erb = <<~ERB
+      <% Label.order(:name).each do |label| %>
+        <%= label %>
+      <% end %>
+    ERB
+
+    error = assert_raises(ReactiveComponent::CompileError) { compile_erb(erb) }
+    assert_match(/`label`/, error.message)
+  end
+
   # --- deduplication ---
 
   test 'same expression used twice gets single key' do

@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { createConsumer } from "@rails/actioncable"
-import { compileTemplate, decompress, morphElement, buildActionBody, routeMessage, duplicateIds } from "reactive_component/lib/reactive_renderer_utils"
+import { compileTemplate, decompress, morphElement, buildActionBody, routeMessage, duplicateIds, strictData } from "reactive_component/lib/reactive_renderer_utils"
 
 const consumer = createConsumer()
 const log = (...args) => {
@@ -151,7 +151,10 @@ export default class extends Controller {
   }
 
   render(data) {
-    const newHtml = this.renderFn(data)
+    // ReactiveComponent.debug marks the wrapper; a missing key then throws
+    // with its name rather than rendering as a silent falsy/undefined.
+    const input = this.element.hasAttribute("data-reactive-debug") ? strictData(data, this.element.id) : data
+    const newHtml = this.renderFn(input)
     this.morph(newHtml)
   }
 

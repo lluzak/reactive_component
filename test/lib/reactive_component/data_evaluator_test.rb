@@ -131,7 +131,8 @@ class ReactiveComponent::DataEvaluatorTest < ActiveSupport::TestCase
       }
     }
 
-    result = evaluator.evaluate_collection('Label.order(:name)', computed)
+    # scoped: labels from sibling tests survive into this one
+    result = evaluator.evaluate_collection("Label.where(name: 'Typed')", computed)
 
     # true stays true (not "true"), nil stays nil (not "") — the client
     # branches on these

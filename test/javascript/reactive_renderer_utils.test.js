@@ -7,6 +7,7 @@ import {
   buildActionBody,
   morphElement,
   duplicateIds,
+  strictData,
 } from "reactive_component/lib/reactive_renderer_utils"
 
 describe("isBase64", () => {
@@ -244,5 +245,30 @@ describe("duplicateIds", () => {
     document.body.append(el, el.cloneNode())
 
     expect(duplicateIds(document, el)).toHaveLength(1)
+  })
+})
+
+describe("strictData", () => {
+  const payload = { v0: [{ v3: "US500", v7: false }], v1: 3, dom_id: "x" }
+
+  it("reads present keys, including falsy ones and array items", () => {
+    const data = strictData(payload, "card")
+    expect(data.v1).toBe(3)
+    expect(data.v0[0].v3).toBe("US500")
+    expect(data.v0[0].v7).toBe(false)
+  })
+
+  it("throws naming the missing key, its path, and what the payload has", () => {
+    const data = strictData(payload, "card")
+    expect(() => data.v0[0].blocked).toThrow(/card: template read "v0\.0\.blocked" but the payload only has: v3, v7/)
+    expect(() => data.nope).toThrow(/read "nope"/)
+  })
+
+  it("leaves prototype members and symbols alone so templates keep working", () => {
+    const data = strictData(payload, "card")
+    expect(data.v0.map(r => r.v3)).toEqual(["US500"])
+    expect(`${data.v1}`).toBe("3")
+    expect(data.v0[0].toString).toBeTypeOf("function")
+    expect(data[Symbol.toPrimitive]).toBeUndefined()
   })
 })

@@ -81,8 +81,49 @@ module ReactiveComponent
 
       result = super
       context = @block_context_stack.pop
+      assert_block_var_extracted!(result.children[2], context)
       flush_block_computed(context) if context[:collection_key]
       result
+    end
+
+    # The invariant every branch above exists to uphold: once a `.each` body is
+    # processed, the ONLY reads of the loop variable left are `item["vN"]` for a
+    # key this block recorded. An item ships as those keys and nothing else, so
+    # any other surviving reference — `<%= item %>`, or a syntactic position no
+    # branch covers yet — is a value the client cannot have. Raise here, at
+    # compile time with the offending source, rather than let it reach a
+    # browser as an undefined read that is silently falsy in an `if`.
+    def assert_block_var_extracted!(body, context)
+      var = context[:var]
+      keys = context[:computed].keys
+      offender = find_unextracted_block_var(body, var, keys)
+      return unless offender
+
+      raise ReactiveComponent::CompileError,
+            "`#{rebuild_source(offender).presence || var}` reads the loop variable `#{var}` in a way the " \
+            'client cannot resolve — an item is shipped only as its extracted expressions. Move the ' \
+            'expression into an output or condition the compiler can evaluate per item.'
+    end
+
+    def find_unextracted_block_var(node, var, keys)
+      return nil unless node.respond_to?(:type) && node.respond_to?(:children)
+      return nil if extracted_item_read?(node, var, keys)
+      return node if node.type == :lvar && node.children[0] == var
+
+      node.children.each do |child|
+        found = find_unextracted_block_var(child, var, keys)
+        return found if found
+      end
+      nil
+    end
+
+    # item["v3"] — the one legal shape
+    def extracted_item_read?(node, var, keys)
+      return false unless node.type == :send && node.children[1] == :[]
+
+      receiver, _, key = node.children
+      receiver.respond_to?(:type) && receiver.type == :lvar && receiver.children[0] == var &&
+        key.respond_to?(:type) && key.type == :str && keys.include?(key.children[0])
     end
 
     # Hook called by ERB filter for expressions inside <%= %> tags.

@@ -109,3 +109,25 @@ export function duplicateIds(doc, element) {
   const selector = `[id="${element.id.replace(/["\\]/g, "\\$&")}"]`
   return [...doc.querySelectorAll(selector)].filter(other => other !== element)
 }
+
+// Debug mode only: `data` (and every item inside it) wrapped so that reading
+// a key the payload does not carry THROWS, naming the key and what is there,
+// instead of yielding undefined — which is silently falsy in an `if` and
+// only ever surfaces as a mystery `.x of undefined` further down. Keys on the
+// prototype chain (map, toString, constructor) and symbols pass through, so
+// only a genuinely missing field trips it.
+export function strictData(data, label) {
+  const wrap = (target, path) => new Proxy(target, {
+    get(obj, key, receiver) {
+      if (typeof key === "symbol" || key in obj) {
+        const value = Reflect.get(obj, key, receiver)
+        return value && typeof value === "object" ? wrap(value, `${path}${String(key)}.`) : value
+      }
+      throw new TypeError(
+        `[reactive-renderer] ${label}: template read "${path}${String(key)}" but the payload only has: ` +
+        Object.keys(obj).join(", ")
+      )
+    }
+  })
+  return wrap(data, "")
+}

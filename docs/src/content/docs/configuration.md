@@ -17,6 +17,7 @@ ReactiveComponent.debug = Rails.env.development?
 When enabled:
 
 - **Unencoded templates** -- Compiled JavaScript templates are embedded as plain text instead of Base64-encoded strings, making them easier to inspect in the browser.
+- **Strict payloads** -- Renders go through a Proxy that throws the moment a template reads a key the broadcast does not carry (`template read "v0.0.blocked" but the payload only has: v3, v7`), instead of rendering an `undefined` that is silently falsy in an `if`.
 - **Debug wrapper divs** -- Each reactive component's wrapper `<div>` receives a `data-reactive-debug` attribute with a human-readable label (e.g. `"Message row component #message_42"`) and a `reactive-debug-wrapper` CSS class so you can visually identify reactive components during development.
 
 ## `ReactiveComponent.renderer`

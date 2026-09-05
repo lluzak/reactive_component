@@ -18,6 +18,12 @@ module ReactiveComponent
 
   class Error < StandardError; end
 
+  # A template the compiler cannot make reactive — e.g. a loop variable read in
+  # a way the client could never satisfy. Raised on first compile (lazily, on
+  # first render or from a test that touches compiled_template_js), never in a
+  # browser.
+  class CompileError < Error; end
+
   included do
     class_attribute :_live_model_attr, instance_writer: false
     class_attribute :_live_model_class_name, instance_writer: false

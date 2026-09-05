@@ -23,6 +23,16 @@
   type (`"false"` is truthy in JS).
 
 ### Added
+- **Compile-time invariant for loops.** After a `.each` body is processed,
+  any surviving read of the loop variable that is not an extracted
+  `item["vN"]` raises `ReactiveComponent::CompileError` naming the
+  expression — an item ships only as its extracted expressions, so such a
+  read could never resolve on the client. Guards the block-variable fix
+  against new syntactic positions.
+- **Debug-mode strict payloads.** With `ReactiveComponent.debug` on, the
+  client renders through a Proxy that throws on reading a key the payload
+  does not carry, naming the key, its path, and the keys present — instead
+  of an `undefined` that is silently falsy in an `if`.
 - The Stimulus controller checks for other elements sharing its id on
   connect and logs a `console.error` naming the collision and the fix.
   Piggybacks on Stimulus's own MutationObserver, so it also catches
