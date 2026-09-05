@@ -119,6 +119,25 @@ class ReactiveComponent::DataEvaluatorTest < ActiveSupport::TestCase
     assert_includes names, 'Work'
   end
 
+  test 'evaluate_collection keeps typed (condition) fields, stringifies output fields' do
+    Label.create!(name: 'Typed', color: 'red')
+    evaluator = ReactiveComponent::DataEvaluator.new(:message, @message, component_class: MessageLabelsComponent)
+    computed = {
+      block_var: 'label',
+      expressions: {
+        'v1' => { source: 'label.name' },
+        'v2' => { source: 'label.color == "red"', typed: true },
+        'v3' => { source: 'label.name.presence && nil', typed: true }
+      }
+    }
+
+    result = evaluator.evaluate_collection('Label.order(:name)', computed)
+
+    # true stays true (not "true"), nil stays nil (not "") — the client
+    # branches on these
+    assert_equal({ 'v1' => 'Typed', 'v2' => true, 'v3' => nil }, result.first)
+  end
+
   test 'evaluate_collection returns empty array for nil collection' do
     evaluator = ReactiveComponent::DataEvaluator.new(:message, @message, component_class: MessageLabelsComponent)
     computed = { block_var: 'item', expressions: {} }

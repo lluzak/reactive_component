@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { createConsumer } from "@rails/actioncable"
-import { compileTemplate, decompress, morphElement, buildActionBody, routeMessage } from "reactive_component/lib/reactive_renderer_utils"
+import { compileTemplate, decompress, morphElement, buildActionBody, routeMessage, duplicateIds } from "reactive_component/lib/reactive_renderer_utils"
 
 const consumer = createConsumer()
 const log = (...args) => {
@@ -60,6 +60,15 @@ export default class extends Controller {
   }
 
   connect() {
+    const clashes = duplicateIds(document, this.element)
+    if (clashes.length) {
+      console.error(
+        `[reactive-renderer] ${clashes.length + 1} components share id "${this.element.id}" — ` +
+        "each will render every other's broadcast. Give the component a distinct dom_id_prefix.",
+        this.element, ...clashes
+      )
+    }
+
     this.clientState = { ...this.stateValue }
     this.lastServerData = Object.keys(this.dataValue).length > 0 ? this.dataValue : null
 

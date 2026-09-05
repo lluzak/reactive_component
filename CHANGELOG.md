@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.5.0] - 2026-09-05
+
+### Changed
+- **Wrapper ids are now component-prefixed by default** —
+  `message_row_message_1` instead of `message_1`. Two components rendering
+  the same record previously shared one id, and because broadcasts are
+  routed by id each rendered the *other's* payload: a `TypeError` deep in
+  the compiled template as soon as the shapes differed, plus duplicate ids
+  in the page. `dom_id_prefix` still overrides the default. Anything that
+  targeted the old bare ids (CSS, Turbo Stream targets, tests) needs the
+  new prefix.
+
+### Fixed
+- **Block variables in conditions.** Inside a `.each`, an item read in a
+  non-output position — `<% if item.flag %>`, a ternary, `"x" if item.y` —
+  passed through ruby2js as `item.flag`, a property the client never
+  receives (items ship as their extracted expressions only, never the raw
+  record). Conditions were silently false after every broadcast and
+  `item.x.present?` threw `Cannot read properties of undefined`. They are
+  now server-evaluated per item like output expressions, but keep their
+  type (`"false"` is truthy in JS).
+
+### Added
+- The Stimulus controller checks for other elements sharing its id on
+  connect and logs a `console.error` naming the collision and the fix.
+  Piggybacks on Stimulus's own MutationObserver, so it also catches
+  hand-picked `dom_id_prefix`es that collide.
+
 ## [0.4.1] - 2026-05-29
 
 ### Changed

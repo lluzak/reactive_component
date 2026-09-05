@@ -57,6 +57,10 @@ Here is how the compiler handles each expression:
 - `label.name` — treated as a simple property access on the loop item; resolved client-side from the collection data.
 - `LabelBadgeComponent::COLORS.fetch(label.color)` — a **block computed** expression. It references both a server-side constant (`LabelBadgeComponent::COLORS`) and the block variable (`label.color`), so it cannot be resolved purely on the client. The server evaluates it once per item and includes the results alongside the collection data.
 
+## Block variables in conditions
+
+An item read outside an output position — `<% if subtask.urgent? %>`, a ternary, `<%= "!" if subtask.late? %>` — is also evaluated per item on the server, but shipped **with its type** rather than as a string, so the client can branch on it. The payload never carries the raw item, so a condition on `subtask.anything` costs one server expression per item, exactly like an output.
+
 ## Limitations
 
 - **Only `.each` is supported.** Other Enumerable methods such as `.map`, `.select`, `.reject`, and `.flat_map` are not compiled to client-side loops. If you need filtering or transformation, do it before passing data to the template (e.g. compute a filtered collection in a helper or model method and iterate over that).

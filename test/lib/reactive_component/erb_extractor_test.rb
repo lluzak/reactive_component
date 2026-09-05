@@ -258,6 +258,24 @@ class ReactiveComponent::ErbExtractorTest < ActiveSupport::TestCase
            "Expected block computed referencing @message.labels and label, got: #{expr_sources}"
   end
 
+  test 'block var in a condition becomes a typed block computed field' do
+    erb = <<~ERB
+      <% Label.order(:name).each do |label| %>
+        <% if label.name.present? %>*<% end %>
+        <%= "!" if label.color == "red" %>
+        <%= label.name %>
+      <% end %>
+    ERB
+    result = compile_erb(erb)
+    computed = result[:extraction][:collection_computed].values.first[:expressions]
+    typed, output = computed.values.partition { |info| info[:typed] }
+
+    assert_equal 2, typed.size, "both conditions should be server-evaluated: #{computed.inspect}"
+    assert(typed.pluck(:source).any? { |src| src.include?('present?') })
+    assert(typed.pluck(:source).any? { |src| src.include?('label.color') })
+    assert_equal ['label.name'], output.pluck(:source)
+  end
+
   # --- deduplication ---
 
   test 'same expression used twice gets single key' do

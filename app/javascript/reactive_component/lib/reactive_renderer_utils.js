@@ -97,3 +97,15 @@ export function routeMessage(message, elementId, strategy) {
 
   return { type: "ignore" }
 }
+
+// Every element in `doc` that shares `element`'s id, excluding `element`.
+// Broadcasts are routed to a component by its id, so a duplicate means one
+// payload renders into several components — and a TypeError deep in the
+// compiled template as soon as their shapes differ. Checked on connect, which
+// Stimulus already fires for every component entering the DOM (its own
+// MutationObserver), so nothing else needs to watch the page.
+export function duplicateIds(doc, element) {
+  if (!element.id) return []
+  const selector = `[id="${element.id.replace(/["\\]/g, "\\$&")}"]`
+  return [...doc.querySelectorAll(selector)].filter(other => other !== element)
+}

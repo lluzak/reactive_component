@@ -109,7 +109,7 @@ class ReactiveComponent::CompilerTest < ActiveSupport::TestCase
 
   # --- mixed: const collection with ivar in block body ---
 
-  test 'compiles const loop with ivar reference in ternary' do
+  test 'compiles const loop with a block-var ternary as a typed per-item field' do
     erb = <<~ERB
       <% Label.order(:name).each do |label| %>
         <%= @message.labels.include?(label) ? "yes" : "no" %>
@@ -118,17 +118,16 @@ class ReactiveComponent::CompilerTest < ActiveSupport::TestCase
 
     result = compile_erb_source(erb)
 
-    # The collection should be extracted
     assert(result[:expressions].values.any?('Label.order(:name)'))
 
-    # @message.labels is extracted as a server-computed ivar chain.
-    # The .include?(label) ternary runs client-side in JS using the
-    # server-provided labels data and the loop variable.
-    assert result[:expressions].values.any?('@message.labels'),
-           "Expected '@message.labels' extracted as server expression, got: #{result[:expressions]}"
-
-    # The JS should use .includes() (JS equivalent) on the extracted var
-    assert_match(/\.includes\(label\)/, result[:js_body])
+    # The condition depends on the loop variable, so the WHOLE of it is
+    # evaluated per item on the server and shipped typed; the JS ternary
+    # branches on that boolean. Never a client-side .includes(label): the
+    # shipped labels would be Label records (the sanitizer refuses them) and
+    # `label` on the client is the item's extracted fields, not a record.
+    assert_no_match(/\.includes\(label\)/, result[:js_body])
+    assert_match(/label\.v\d+ \? "yes" : "no"/, result[:js_body])
+    assert_not result[:expressions].value?('@message.labels'), 'the ivar chain must not be shipped on its own'
   end
 
   # --- fields list ---

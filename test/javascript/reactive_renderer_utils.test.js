@@ -6,6 +6,7 @@ import {
   routeMessage,
   buildActionBody,
   morphElement,
+  duplicateIds,
 } from "reactive_component/lib/reactive_renderer_utils"
 
 describe("isBase64", () => {
@@ -212,5 +213,36 @@ describe("morphElement", () => {
     element.classList.add("reactive-morph-flash")
     morphElement(element, "<p>flash again</p>")
     expect(element.classList.contains("reactive-morph-flash")).toBe(true)
+  })
+})
+
+describe("duplicateIds", () => {
+  beforeEach(() => { document.body.innerHTML = "" })
+
+  it("finds every other element sharing the id, never the element itself", () => {
+    document.body.innerHTML = `
+      <div id="message_1"></div>
+      <div id="message_1"></div>
+      <div id="message_2"></div>`
+    const [first, second] = document.querySelectorAll("#message_1, [id='message_1']")
+
+    expect(duplicateIds(document, first)).toEqual([second])
+    expect(duplicateIds(document, second)).toEqual([first])
+  })
+
+  it("is empty for a unique id and for an element with no id", () => {
+    document.body.innerHTML = `<div id="message_1"></div><div></div>`
+    const [unique, anonymous] = document.body.children
+
+    expect(duplicateIds(document, unique)).toEqual([])
+    expect(duplicateIds(document, anonymous)).toEqual([])
+  })
+
+  it("copes with an id that would break a naive attribute selector", () => {
+    const el = document.createElement("div")
+    el.id = 'weird"id'
+    document.body.append(el, el.cloneNode())
+
+    expect(duplicateIds(document, el)).toHaveLength(1)
   })
 })

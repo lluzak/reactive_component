@@ -79,6 +79,7 @@ module ReactiveComponent
       block_var = computed[:block_var]
 
       lambdas = {}
+      typed = {}
       nested = {}
       (computed[:expressions] || {}).each do |var_name, info|
         if info[:nested_component]
@@ -91,13 +92,23 @@ module ReactiveComponent
           nested[var_name] = { klass: klass, kwargs: kwarg_lambdas }
         else
           lambdas[var_name] = eval_lambda(block_var, info[:source])
+          typed[var_name] = info[:source] if info[:typed]
         end
       end
 
       collection.map do |item|
         result = {}
         lambdas.each do |var_name, fn|
-          result[var_name] = fn.call(item).to_s
+          value = fn.call(item)
+          # Condition fields keep their type — the client tests them for
+          # truthiness and "false" is truthy in JS. Output fields stay
+          # stringified so nil renders as "" rather than "null". Sanitized
+          # here, not only in build_data: the nested-component path skips it.
+          result[var_name] = if typed.key?(var_name)
+                               ReactiveComponent.sanitize_for_broadcast(value, source: typed[var_name])
+                             else
+                               value.to_s
+                             end
         end
         nested.each do |var_name, nc_info|
           kwargs_values = nc_info[:kwargs].transform_values { |fn| fn.call(item) }

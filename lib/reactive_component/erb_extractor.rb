@@ -249,6 +249,19 @@ module ReactiveComponent
         return s(:lvar, key.to_sym)
       end
 
+      # A block variable read anywhere OTHER than an output position — a
+      # condition, a ternary, `"x" if item.flag`. Output positions are rewritten
+      # by process_erb_send_append; without this branch everything else passes
+      # through ruby2js as `item.prop`, a property the client never receives
+      # (an item ships as its extracted expressions only — never the raw
+      # record). So conditions were silently false and `item.x.present?` threw.
+      # Evaluated per item on the server like any block-computed field, but
+      # typed rather than stringified: "false" is truthy in JS.
+      if in_block_context? && contains_block_var?(node)
+        key = record_block_computed(node, typed: true)
+        return s(:send, s(:lvar, current_block_context[:var]), :[], s(:str, key))
+      end
+
       super
     end
 
@@ -479,16 +492,18 @@ module ReactiveComponent
       node.children.any? { |child| ast_node?(child) && contains_specific_lvar?(child, var_name) }
     end
 
-    def record_block_computed(node, raw: false)
+    def record_block_computed(node, raw: false, typed: false)
       source = rebuild_source(node)
       computed = current_block_context[:computed]
 
-      # Dedup within this block: same source reuses same key
-      existing = computed.find { |_, info| info[:source] == source }
+      # Dedup within this block: same source reuses same key — unless one use
+      # is an output (stringified, nil → "") and the other a condition (typed,
+      # nil → null); those need their own keys.
+      existing = computed.find { |_, info| info[:source] == source && info.fetch(:typed, false) == typed }
       return existing[0] if existing
 
       key = next_key
-      computed[key] = { source: source, raw: raw }
+      computed[key] = { source: source, raw: raw, typed: typed }
       key
     end
 

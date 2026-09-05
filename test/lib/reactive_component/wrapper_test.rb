@@ -20,8 +20,18 @@ class ReactiveComponent::WrapperTest < ActiveSupport::TestCase
   test 'wrap includes dom_id and controller' do
     html = ReactiveComponent::Wrapper.wrap(MessageRowComponent, @message, '<p>inner</p>')
 
-    assert_includes html, %(id="message_#{@message.id}")
+    # component-prefixed, never the bare dom_id(record) — see dom_id_for
+    assert_includes html, %(id="message_row_message_#{@message.id}")
     assert_includes html, %(data-controller="reactive-renderer")
+  end
+
+  test 'two components on the same record never share a wrapper id' do
+    ids = [MessageRowComponent, MessageDetailComponent, MessageLabelsComponent]
+          .map { |klass| klass.dom_id_for(@message) }
+
+    assert_equal ids.uniq, ids
+    assert_equal(ids, [MessageRowComponent, MessageDetailComponent, MessageLabelsComponent]
+      .map { |klass| klass.build_data(@message)['dom_id'] })
   end
 
   test 'wrap includes template-id-value' do

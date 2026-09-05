@@ -9,11 +9,11 @@ class ClientStateTest < SystemTestCase
 
     page.execute_script('window._reactiveTestMarker = true')
 
-    row = find("#message_#{@message1.id}")
+    row = find("#message_row_message_#{@message1.id}")
     star_button = row.find("[data-reactive-renderer-action-param='toggle_star']")
     star_button.click
 
-    assert_selector "#message_#{@message1.id} svg.text-yellow-400", wait: 5
+    assert_selector "#message_row_message_#{@message1.id} svg.text-yellow-400", wait: 5
 
     marker = page.evaluate_script('window._reactiveTestMarker')
 

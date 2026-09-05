@@ -246,12 +246,26 @@ module ReactiveComponent
       %(<script type="text/x-template" id="#{template_element_id}">#{encoded_template}</script>).html_safe
     end
 
+    # The wrapper id, and the `dom_id` the client matches broadcasts against.
+    #
+    # Always prefixed with the component, never the bare `dom_id(record)`: two
+    # components rendering the same record would otherwise share one id, and
+    # since routing is by id each would render the OTHER's payload — a
+    # TypeError deep in the compiled template the moment their shapes differ,
+    # plus duplicate ids in the page. `dom_id_prefix` still overrides the
+    # default when a shorter or hand-picked id is wanted.
     def dom_id_for(record)
-      if respond_to?(:dom_id_prefix) && dom_id_prefix.present?
-        ActionView::RecordIdentifier.dom_id(record, dom_id_prefix)
-      else
-        ActionView::RecordIdentifier.dom_id(record)
-      end
+      ActionView::RecordIdentifier.dom_id(record, dom_id_prefix.presence || default_dom_id_prefix)
+    end
+
+    def dom_id_prefix = nil
+
+    # MessageRowComponent → message_row; Admin::MessageRowComponent → admin_message_row.
+    # An anonymous class (tests) has no name to distinguish it by.
+    def default_dom_id_prefix
+      return 'component' unless name
+
+      name.underscore.tr('/', '_').delete_suffix('_component')
     end
 
     def expression_field_map
