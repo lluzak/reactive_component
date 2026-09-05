@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.5.0] - 2026-09-05
+## [0.6.0] - 2026-09-05
 
 ### Changed
 - **ruby2js is gone; the compiler runs on Prism's own tree.** One pass

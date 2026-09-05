@@ -48,8 +48,8 @@ module ReactiveComponent
         @locals = Set.new
       end
 
-      # Same shape ruby2js produced, so the compiler's wrapper stripping and
-      # escaping pass apply unchanged: `function render({ a, v0 }) {\n  …\n}`.
+      # The shape the compiler's wrapper stripping and escaping pass expect:
+      # `function render({ a, v0 }) {\n  …\n}`.
       def render(program)
         statements = program.statements.body
         first = statements.first

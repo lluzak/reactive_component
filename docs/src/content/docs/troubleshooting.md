@@ -125,7 +125,7 @@ The output should include a pin for `reactive_component`. If it is missing, re-r
 
 ## `TypeError: v0.map is not a function` (or another `vN` deep in a template)
 
-Two reactive components are rendering the **same record** and sharing a wrapper id, so each receives the other's broadcast and runs its template over the wrong data. Since 0.5 every wrapper id is prefixed with the component (`message_row_message_1`) so this cannot happen by default; check the console for a `[reactive-renderer] … share id` error — it means two components resolved to the same `dom_id_prefix`. Give each a distinct one:
+Two reactive components are rendering the **same record** and sharing a wrapper id, so each receives the other's broadcast and runs its template over the wrong data. Since 0.6 every wrapper id is prefixed with the component (`message_row_message_1`) so this cannot happen by default; check the console for a `[reactive-renderer] … share id` error — it means two components resolved to the same `dom_id_prefix`. Give each a distinct one:
 
 ```ruby
 class MessageDetailComponent < ApplicationComponent
