@@ -28,9 +28,10 @@ Gem::Specification.new do |spec|
   spec.executables = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
   spec.require_paths = ['lib']
 
+  spec.add_dependency 'erubi', '~> 1.11'
+  spec.add_dependency 'parser', '>= 3.3'
   spec.add_dependency 'prism', '~> 1.0'
   spec.add_dependency 'rails', '>= 7.1', '< 9'
-  spec.add_dependency 'ruby2js', '~> 5.1'
   spec.add_dependency 'turbo-rails', '~> 2.0'
   spec.add_dependency 'view_component', '>= 3.0', '< 5'
 end

@@ -1,11 +1,7 @@
 # frozen_string_literal: true
 
-require 'ruby2js'
-
 module ReactiveComponent
   module ErbExtractor
-    include Ruby2JS::Filter::SEXP
-
     def initialize(*args)
       super
       @extracted_expressions = {}
@@ -15,7 +11,7 @@ module ReactiveComponent
       @source_to_key = {} # source string -> assigned key (scalar dedup)
     end
 
-    def set_options(options)
+    def options=(options)
       super
       @extraction_output = @options[:extraction]
       @nestable_checker = @options[:nestable_checker]
@@ -293,7 +289,7 @@ module ReactiveComponent
       # A block variable read anywhere OTHER than an output position — a
       # condition, a ternary, `"x" if item.flag`. Output positions are rewritten
       # by process_erb_send_append; without this branch everything else passes
-      # through ruby2js as `item.prop`, a property the client never receives
+      # through to the emitter as `item.prop`, a property the client never receives
       # (an item ships as its extracted expressions only — never the raw
       # record). So conditions were silently false and `item.x.present?` threw.
       # Evaluated per item on the server like any block-computed field, but
@@ -390,7 +386,7 @@ module ReactiveComponent
 
     # `tag.span(class: x, **@options)` — extract the splat target as a
     # server-computed hash and emit `{...options_key}` so the JS spread is
-    # valid (without this, ruby2js would emit `#options`, a private class
+    # valid (a naive emit of `**@options` would be `#options`, a private class
     # field reference that's a syntax error outside a class body).
     def process_tag_kwsplat(node)
       inner = node.children[0]
@@ -652,8 +648,19 @@ module ReactiveComponent
       return false unless node && ast_node?(node)
       return false if lvar_only?(node)
 
-      ivar_chain?(node) || const_chain?(node) ||
-        (node.type == :send && node.children[0].nil? && !contains_lvar?(node))
+      ivar_chain?(node) || const_chain?(node) || self_call_chain?(node)
+    end
+
+    # `helper`, and any chain rooted at one — `content.present?`,
+    # `current_user.name`: the receiver is the server's, so the whole chain
+    # is. (Tag-builder chains are excluded: `tag.div(...)` is rewritten into
+    # `_tag*` helper calls by process_tag_builder_append, not extracted.)
+    def self_call_chain?(node)
+      return false unless node.type == :send && !contains_lvar?(node)
+
+      root = node
+      root = root.children[0] while root.type == :send && root.children[0]
+      root.type == :send && root.children[0].nil? && !tag_builder?(root)
     end
 
     def extractable?(node)
@@ -696,7 +703,9 @@ module ReactiveComponent
       # `:lvar` if it were a local, so this is always a server-side call.
       return false if node.children[0].nil?
 
-      !contains_ivar?(node) && !contains_const?(node)
+      # "purely lvar-based" needs a local in it: `content.present?` has none,
+      # and is the server's (see self_call_chain?).
+      contains_lvar?(node) && !contains_ivar?(node) && !contains_const?(node)
     end
 
     # Returns true if a bare method call's arguments only reference lvars/literals

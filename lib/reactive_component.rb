@@ -313,7 +313,7 @@ module ReactiveComponent
       compiled_data[:simple_ivars].each do |ivar_name|
         # The live-model ivar itself (e.g. `@message` when `subscribes_to :message`)
         # is the subscription key, not a payload field. It's only in the ivar list
-        # because extract_ivar_names sees `@message.subject` etc. — ruby2js never
+        # because extract_ivar_names sees `@message.subject` etc. — the emitter never
         # emits the bare name in the destructure for extracted chains, so don't
         # ship it and don't sanitize-raise on it.
         next if live_model_attr && ivar_name == live_model_attr.to_s

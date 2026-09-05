@@ -3,6 +3,17 @@
 ## [0.5.0] - 2026-09-05
 
 ### Changed
+- **ruby2js is gone.** Templates are parsed by Prism (translated into the
+  parser-gem tree the extractor walks) and emitted by the gem's own
+  `Transpiler` — a whitelist over the template skeleton (literals, data
+  reads, `if`/`unless`/ternaries, boolean and comparison operators, `.each`,
+  and the `_tag*`/`_render_*` helpers). Anything else raises
+  `ReactiveComponent::CompileError` naming the source, where ruby2js used
+  to guess (`present?` became a `.present` property read). Dependencies:
+  `ruby2js` out; `parser` and `erubi` in. The compiled JS keeps the same
+  shape (`function render({ … })`, `_buf +=`, `for..of`, `_tag_open(...)`).
+- The extractor now lifts a chain rooted at a self call
+  (`content.present?`, `current_user.name`) whole, like an ivar chain.
 - **Wrapper ids are now component-prefixed by default** —
   `message_row_message_1` instead of `message_1`. Two components rendering
   the same record previously shared one id, and because broadcasts are

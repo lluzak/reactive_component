@@ -13,7 +13,7 @@ Server                                      Client
 ERB template                                Stimulus controller
     |                                           |
     v                                           v
-Compiler (ERB -> ruby2js -> JS function)    JS render function
+Compiler (ERB -> Prism -> extract -> emit JS)    JS render function
     |                                           ^
     v                                           |
 DataEvaluator (extracts expression values)  ActionCable subscription
@@ -28,11 +28,11 @@ When the Rails application boots, the `Compiler` processes each component's ERB 
 
 The process has several steps:
 
-1. **ERB to Ruby.** The template is parsed using `Ruby2JS::Erubi`, which converts the ERB markup into a Ruby expression tree.
+1. **ERB to Ruby.** Erubi turns the template into a Ruby program that appends to a buffer; Prism parses it.
 
 2. **Expression extraction.** The `ErbExtractor` filter walks the AST and identifies expressions that must be evaluated on the server — things like `@message.subject` or `Label.count`. Each expression is assigned a short, unique key: `v0`, `v1`, `v2`, and so on.
 
-3. **JS function generation.** `ruby2js` converts the remaining template logic — conditionals, loops, interpolation — into a JavaScript function. Wherever a server expression appeared, the function now reads from a data object (e.g. `data.v0`).
+3. **JS function generation.** The emitter turns the remaining template skeleton — conditionals, loops, interpolation — into a JavaScript function. It is a whitelist, not a Ruby-to-JS converter: by this point every Ruby expression has been lifted to a data key, and anything else (a method call on a literal, an unsupported construct) raises `ReactiveComponent::CompileError` naming the source rather than being translated on a best-effort basis. Wherever a server expression appeared, the function reads from a data object (e.g. `data.v0`).
 
 4. **Embedding.** The compiled JavaScript function is embedded in the page inside a `<script type="text/template">` tag. In production, the script content is Base64-encoded. In debug mode, it is stored as plain text for easier inspection.
 

@@ -53,10 +53,6 @@ Add to your Gemfile:
 
 ```ruby
 gem "reactive_component"
-# ruby2js is required until a fixed release ships. The published 5.1.2
-# pins `regexp_parser ~> 2.1.1`, which conflicts with rubocop. Master
-# relaxes it to `~> 2.9`; pin a specific SHA for reproducible builds.
-gem "ruby2js", github: "ruby2js/ruby2js"
 ```
 
 Mount the engine in your routes:
@@ -79,7 +75,7 @@ See the [Installation guide](https://lluzak.github.io/reactive_component/install
 
 ## How It Works
 
-ReactiveComponent compiles your ERB templates into JavaScript render functions at boot time using [ruby2js](https://github.com/ruby2js/ruby2js). When a model changes:
+ReactiveComponent compiles your ERB templates into JavaScript render functions at boot time: [Prism](https://github.com/ruby/prism) parses the template, the extractor lifts every Ruby expression to the server, and a small emitter turns the remaining skeleton — literals, conditionals, loops — into JavaScript. When a model changes:
 
 1. `after_commit` callbacks (auto-wired by `subscribes_to`) trigger a broadcast.
 2. The server evaluates only the dynamic expressions from your template and sends compact JSON data over ActionCable.

@@ -5,15 +5,9 @@ require 'test_helper'
 class ReactiveComponent::CompilerTest < ActiveSupport::TestCase
   # Helper to compile ERB source directly (bypassing component file lookup)
   def compile_erb_source(erb_source)
-    erb_ruby = Ruby2JS::Erubi.new(erb_source).src
+    erb_ruby = ReactiveComponent::Erubi.new(erb_source).src
     extraction = { expressions: {}, raw_fields: Set.new }
-
-    js_function = Ruby2JS.convert(
-      erb_ruby,
-      filters: [:erb, :functions, ReactiveComponent::ErbExtractor],
-      eslevel: 2022,
-      extraction: extraction
-    ).to_s
+    js_function = ReactiveComponent::Transpiler.call(erb_ruby, extraction: extraction)
 
     expressions = extraction[:expressions] || {}
     raw_fields = extraction[:raw_fields] || Set.new
@@ -177,7 +171,7 @@ class ReactiveComponent::CompilerTest < ActiveSupport::TestCase
     result = compile_erb_source('<%= @x %>')
 
     assert_match(/function escapeHTML/, result[:js_body],
-                 'ruby2js emits bare escapeHTML() calls in some template paths; preamble must define it')
+                 'variable reads in <%= %> are emitted as escapeHTML(); the preamble must define it')
   end
 
   test 'compiled preamble defines _tag_open and _tag_close' do
@@ -200,7 +194,7 @@ class ReactiveComponent::CompilerTest < ActiveSupport::TestCase
 
   test 'simple_ivars includes every @ivar the template mentions' do
     erb = '<%= @initials %><%= @initials.present? %><%= @size %>'
-    erb_ruby = Ruby2JS::Erubi.new(erb).src
+    erb_ruby = ReactiveComponent::Erubi.new(erb).src
     ivars = ReactiveComponent::Compiler.extract_ivar_names(erb_ruby)
 
     assert_includes ivars, 'initials'

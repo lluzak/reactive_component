@@ -44,6 +44,8 @@ Metrics/MethodLength:
   Max: 20
   Exclude:
     - 'lib/reactive_component.rb'
+    - 'lib/reactive_component/transpiler.rb'
+    - 'lib/reactive_component/erb_appends.rb'
     - 'lib/reactive_component/compiler.rb'
     - 'lib/reactive_component/data_evaluator.rb'
     - 'lib/reactive_component/erb_extractor.rb'
@@ -54,6 +56,8 @@ Metrics/AbcSize:
   Max: 25
   Exclude:
     - 'lib/reactive_component.rb'
+    - 'lib/reactive_component/transpiler.rb'
+    - 'lib/reactive_component/erb_appends.rb'
     - 'lib/reactive_component/compiler.rb'
     - 'lib/reactive_component/data_evaluator.rb'
     - 'lib/reactive_component/erb_extractor.rb'
@@ -63,6 +67,8 @@ Metrics/AbcSize:
 Metrics/CyclomaticComplexity:
   Exclude:
     - 'lib/reactive_component.rb'
+    - 'lib/reactive_component/transpiler.rb'
+    - 'lib/reactive_component/erb_appends.rb'
     - 'lib/reactive_component/compiler.rb'
     - 'lib/reactive_component/data_evaluator.rb'
     - 'lib/reactive_component/erb_extractor.rb'
@@ -71,6 +77,8 @@ Metrics/CyclomaticComplexity:
 Metrics/PerceivedComplexity:
   Exclude:
     - 'lib/reactive_component.rb'
+    - 'lib/reactive_component/transpiler.rb'
+    - 'lib/reactive_component/erb_appends.rb'
     - 'lib/reactive_component/compiler.rb'
     - 'lib/reactive_component/data_evaluator.rb'
     - 'lib/reactive_component/erb_extractor.rb'
@@ -96,15 +104,11 @@ Rails/OutputSafety:
   Exclude:
     - 'lib/**/*'
 
-# set_options overrides a method from the ruby2js filter base class
-Naming/AccessorMethodName:
-  Exclude:
-    - 'lib/reactive_component/erb_extractor.rb'
-
 # :true, :false, :nil are AST node type symbols in this context
 Lint/BooleanSymbol:
   Exclude:
     - 'lib/reactive_component/erb_extractor.rb'
+    - 'lib/reactive_component/transpiler.rb'
 
 # instance_eval with runtime-constructed source is intrinsic to this feature
 Style/DocumentDynamicEvalDefinition:

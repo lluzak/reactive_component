@@ -1,11 +1,8 @@
 # frozen_string_literal: true
 
 require 'prism'
-require 'ruby2js'
-require 'ruby2js/erubi'
-require 'ruby2js/filter/erb'
-require 'ruby2js/filter/functions'
-require_relative 'erb_extractor'
+require_relative 'erubi'
+require_relative 'transpiler'
 
 module ReactiveComponent
   module Compiler
@@ -13,10 +10,8 @@ module ReactiveComponent
       function _escape(s) {
         return s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
       }
-      // ruby2js emits bare `escapeHTML(value)` calls for some `<%= %>` outputs
-      // (notably ivar reads inside nested-component templates). Our own
-      // `add_html_escaping` post-processor only handles `String(...)` appends,
-      // so alias the name here to make the compiled JS self-contained.
+      // A variable or property read in `<%= %>` is emitted as escapeHTML(value);
+      // every other output is String(value), which `add_html_escaping` wraps.
       function escapeHTML(s) { return _escape(String(s)); }
     JS
 
@@ -71,7 +66,7 @@ module ReactiveComponent
 
     def compile(component_class)
       erb_source = read_erb(component_class)
-      erb_ruby = Ruby2JS::Erubi.new(erb_source).src
+      erb_ruby = ReactiveComponent::Erubi.new(erb_source).src
 
       extraction = { expressions: {}, raw_fields: Set.new }
 
@@ -91,13 +86,7 @@ module ReactiveComponent
       end
 
       js_function = begin
-        Ruby2JS.convert(
-          erb_ruby,
-          filters: [:erb, :functions, ReactiveComponent::ErbExtractor],
-          eslevel: 2022,
-          extraction: extraction,
-          nestable_checker: nestable_checker
-        ).to_s
+        ReactiveComponent::Transpiler.call(erb_ruby, extraction: extraction, nestable_checker: nestable_checker)
       rescue ReactiveComponent::CompileError => e
         raise ReactiveComponent::CompileError, "#{component_class.name}: #{e.message}"
       end
@@ -108,7 +97,7 @@ module ReactiveComponent
       nested_components = extraction[:nested_components] || {}
 
       # Every @ivar the template mentions needs its stripped form (`initials`
-      # for `@initials`) in the JS destructure, because ruby2js emits those
+      # for `@initials`) in the JS destructure, because the emitter reads those
       # names directly alongside any extracted-expression vars. Don't subtract
       # ivars that also appear inside extracted expressions — a template that
       # uses both `<%= @initials %>` and `<%= @initials.present? %>` needs

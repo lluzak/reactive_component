@@ -1,25 +1,15 @@
 # frozen_string_literal: true
 
 require 'test_helper'
-require 'ruby2js'
-require 'ruby2js/erubi'
-require 'ruby2js/filter/erb'
-require 'ruby2js/filter/functions'
 
 class ReactiveComponent::ErbExtractorTest < ActiveSupport::TestCase
   # Helper: compile ERB source through the extractor pipeline and return
   # the extraction hash (expressions, raw_fields, collection_computed)
   # along with the generated JS body.
   def compile_erb(erb_source)
-    erb_ruby = Ruby2JS::Erubi.new(erb_source).src
+    erb_ruby = ReactiveComponent::Erubi.new(erb_source).src
     extraction = { expressions: {}, raw_fields: Set.new }
-
-    js = Ruby2JS.convert(
-      erb_ruby,
-      filters: [:erb, :functions, ReactiveComponent::ErbExtractor],
-      eslevel: 2022,
-      extraction: extraction
-    ).to_s
+    js = ReactiveComponent::Transpiler.call(erb_ruby, extraction: extraction)
 
     { js: js, extraction: extraction }
   end
