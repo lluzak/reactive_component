@@ -19,7 +19,7 @@ gem 'turbo-rails'
 gem 'view_component'
 
 group :development do
-  gem 'rubocop', require: false
+  gem 'rubocop', '~> 1.90.0', require: false
   gem 'rubocop-minitest', require: false
   gem 'rubocop-performance', require: false
   gem 'rubocop-rails', require: false
