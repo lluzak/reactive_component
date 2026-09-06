@@ -30,9 +30,9 @@ The process has several steps:
 
 1. **ERB to Ruby.** Erubi turns the template into a Ruby program that appends to a buffer; Prism parses it.
 
-2. **Expression extraction.** The `ErbExtractor` filter walks the AST and identifies expressions that must be evaluated on the server — things like `@message.subject` or `Label.count`. Each expression is assigned a short, unique key: `v0`, `v1`, `v2`, and so on.
+2. **Expression extraction.** One pass over Prism's tree lifts every expression the server must evaluate — `@message.subject`, `Label.count`, `helper(x)`, `content.present?` — to a short key: `v0`, `v1`, and so on. Inside a `.each`, anything touching the loop variable becomes a per-item key (`item.v3`), and a per-item value used in a condition keeps its type (`false` stays `false`; `"false"` would be truthy in JavaScript).
 
-3. **JS function generation.** The emitter turns the remaining template skeleton — conditionals, loops, interpolation — into a JavaScript function. It is a whitelist, not a Ruby-to-JS converter: by this point every Ruby expression has been lifted to a data key, and anything else (a method call on a literal, an unsupported construct) raises `ReactiveComponent::CompileError` naming the source rather than being translated on a best-effort basis. Wherever a server expression appeared, the function reads from a data object (e.g. `data.v0`).
+3. **JS function generation.** The same pass emits the template's skeleton — literals, data reads, `if`/`unless`/ternaries, boolean and comparison operators, `.each` as `for..of`, tag-builder and nested-component helpers — as a JavaScript function. It is a whitelist, not a Ruby-to-JS converter: anything outside it raises `ReactiveComponent::CompileError` naming the source, at compile time, instead of being translated on a best-effort basis. Wherever a server expression appeared, the function reads from a data object (e.g. `data.v0`).
 
 4. **Embedding.** The compiled JavaScript function is embedded in the page inside a `<script type="text/template">` tag. In production, the script content is Base64-encoded. In debug mode, it is stored as plain text for easier inspection.
 
@@ -73,7 +73,7 @@ When a broadcast arrives:
 1. The controller receives the JSON data payload.
 2. Any client-managed state (for example `{ expanded: true }`) is merged with the incoming server data.
 3. The compiled render function is called with the merged data object.
-4. The component's inner HTML is replaced with the function's output.
+4. The component's inner HTML is morphed to the function's output — with [Idiomorph](https://github.com/bigskysoftware/idiomorph) when `window.Idiomorph` is present (scroll positions and nested Stimulus controllers survive a push), or by replacing `innerHTML` otherwise.
 
 Because the render function was compiled at boot time and the data payload is minimal, re-renders are fast and require no round-trip to generate HTML on the server.
 
@@ -81,6 +81,7 @@ Because the render function was compiled at boot time and the data payload is mi
 
 The `Wrapper` module is responsible for generating the outer `<div>` that ties everything together. It sets the Stimulus `data-controller` attribute and populates the data values the controller needs:
 
+- `id` — the wrapper's DOM id, prefixed with the component (`message_row_message_1`). Broadcasts are routed to a component by this id, so two components rendering the same record must never share one; `dom_id_prefix` overrides the default.
 - `data-reactive-renderer-stream-value` — the signed ActionCable stream name for this record and component.
 - `data-reactive-renderer-template-id-value` — the identifier used to locate the compiled JS function.
 - Action token and URL attributes for `live_action` support, enabling server-side callbacks triggered from the component.

@@ -38,8 +38,8 @@ end
 <div class="message-row">
   <span><%= @message.sender.name %></span>
   <span><%= @message.subject %></span>
-  <button data-action="click->reactive-renderer#action"
-          data-reactive-action="toggle_star">
+  <button data-action="click->reactive-renderer#performAction"
+          data-reactive-renderer-action-param="toggle_star">
     <%= @message.starred? ? "Unstar" : "Star" %>
   </button>
 </div>
@@ -67,7 +67,8 @@ See the [Installation guide](https://lluzak.github.io/reactive_component/install
 ## Features
 
 - **Declarative DSL** — `subscribes_to`, `broadcasts`, `live_action`, `client_state`
-- **Automatic ERB-to-JS compilation** — no separate client templates to maintain
+- **Automatic ERB-to-JS compilation** — no separate client templates to maintain; compiled on [Prism](https://github.com/ruby/prism)'s own tree
+- **Compile-time errors, not guesses** — anything the compiler can't make reactive raises `CompileError` naming the source
 - **ActionCable-powered live updates** — instant re-renders when data changes
 - **Secure server actions** — HMAC-signed tokens prevent tampering
 - **Client-side state** — ephemeral UI state managed in the browser

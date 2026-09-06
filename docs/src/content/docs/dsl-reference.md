@@ -224,6 +224,24 @@ For actions that accept parameters, pass them as additional Stimulus params:
 
 ---
 
+## `dom_id_prefix`
+
+The wrapper `<div>`'s id is `dom_id(record)` prefixed with the component's name — `message_row_message_1` for `MessageRowComponent`. Broadcasts are routed to a component by this id, so two components rendering the same record must never share one; the prefix is what keeps them apart. Override it for a shorter or hand-picked id:
+
+```ruby
+class MessageDetailComponent < ApplicationComponent
+  include ReactiveComponent
+
+  subscribes_to :message
+
+  def self.dom_id_prefix = :detail   # → detail_message_1
+end
+```
+
+In debug mode the Stimulus controller logs a `console.error` naming any two components that end up with the same id.
+
+---
+
 ## `client_state(name, default: nil)`
 
 Declares a client-only state field managed in JavaScript. Client state is useful for ephemeral UI concerns like toggles, selections, or expanded/collapsed sections that do not need to be persisted on the server.
@@ -331,3 +349,5 @@ Client state fields are:
 - Available in the ERB template as regular instance variables
 - Initialized from the `default:` value on first render, or from the constructor argument if provided
 - Updated on the client only — they never trigger a server request or broadcast
+
+**Inside a `.each` loop**, read client state only on its own (`<% if @compact %>`, `data-open="<%= @open %>"`). A comparison that also touches the loop variable — `<% if @expanded == item.id %>` — depends on the item, so it is evaluated on the server per item and cannot follow a client-side toggle. Put the state on a `data-` attribute and let CSS (or a small Stimulus controller) apply it per row, or make the row its own nested component with its own client state.

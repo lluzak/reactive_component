@@ -135,6 +135,16 @@ class MessageDetailComponent < ApplicationComponent
 end
 ```
 
+## `ReactiveComponent::CompileError: \`.upcase\` reached the client`
+
+The compiler lifts every expression it can to the server: anything touching an ivar, a helper, a constant, or the loop variable. What is left has to run in JavaScript, and only a small whitelist does — data reads, `if`/`unless`/ternaries, `&&`/`||`/`!`, comparisons, `.each`. A Ruby method call that survives (typically on a literal, or on a template-local variable) is refused by name rather than guessed at. Move it into an expression the server evaluates — a helper or a component method — or into an output position.
+
+The same error with *"reads the loop variable … in a way the client cannot resolve"* means the item itself is used as a value (`<%= item %>`): an item is shipped only as its extracted expressions. Read a property or call a method on it instead.
+
+## `[reactive-renderer] 2 components share id "message_1"` in the console
+
+Two components on the page resolved to the same wrapper id, so each will render the other's broadcast. That happens only when two components rendering the same record set identical `dom_id_prefix`es (the default prefix is the component name). Give one of them a different prefix.
+
 ## Debug mode
 
 To get additional diagnostic information, enable debug mode in an initializer:
