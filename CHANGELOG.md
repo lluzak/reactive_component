@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- The renderer controller imports its utils by bare specifier again. The
+  0.7.1 relative import resolved to an undigested `/assets/` URL under
+  Propshaft and 404ed, which left Turbo stream sources never connecting and
+  every system test failing. The bare specifier works for both importmap
+  (`pin_all_from`) and npm (`exports`).
+
 ## [0.7.1] - 2026-09-06
 
 ### Added
