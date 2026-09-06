@@ -55,6 +55,7 @@ class ReactiveComponent::ChannelTest < ActionCable::Channel::TestCase
   end
 
   teardown do
+    Labeling.delete_all
     Message.delete_all
     Contact.delete_all
   end
