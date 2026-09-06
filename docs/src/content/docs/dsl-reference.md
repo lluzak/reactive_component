@@ -220,7 +220,7 @@ For actions that accept parameters, pass them as additional Stimulus params:
 </button>
 ```
 
-**Security:** Each component instance generates a signed token (`live_action_token`) that is embedded in the wrapper `<div>`. The server verifies this token before executing any action, ensuring that the component class and record cannot be tampered with.
+**Security:** Each component instance generates a signed token (`live_action_token`) that is embedded in the wrapper `<div>`. The server verifies this token before executing any action, ensuring that the component class and record cannot be tampered with. Client params are filtered with `permit` against the declared `params:` list, so the action method only ever sees the keys the component declared, and only as scalars.
 
 ---
 

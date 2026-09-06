@@ -213,13 +213,11 @@ module ReactiveComponent
       instance = allocate
       instance.instance_variable_set(:"@#{live_model_attr}", record)
 
-      allowed = action_config[:params]
-      if allowed.any?
-        filtered = action_params.symbolize_keys.slice(*allowed)
-        instance.send(action_name, **filtered)
-      else
-        instance.send(action_name)
-      end
+      # `permit` (not `permit!` + slice): only declared keys, and only scalar
+      # values, so a nested hash or array never reaches the action method.
+      action_params = ActionController::Parameters.new(action_params) unless action_params.is_a?(ActionController::Parameters)
+      filtered = action_params.permit(*action_config[:params]).to_h.symbolize_keys
+      instance.send(action_name, **filtered)
     end
 
     def compiled_data

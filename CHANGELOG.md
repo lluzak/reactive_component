@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- `live_action` params are filtered with `permit` against the declared
+  list, so a nested hash or array sent for a scalar param no longer reaches
+  the action method.
+
 ## [0.6.2] - 2026-09-06
 
 ### Changed

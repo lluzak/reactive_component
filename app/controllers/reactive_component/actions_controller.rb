@@ -10,7 +10,7 @@ module ReactiveComponent
       component_class.execute_action(
         params[:action_name],
         record,
-        params.fetch(:params, {}).permit!.to_h
+        params.fetch(:params, {})
       )
 
       head :ok
