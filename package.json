@@ -1,5 +1,21 @@
 {
-  "private": true,
+  "name": "reactive_component",
+  "version": "0.7.1",
+  "description": "Stimulus controller and renderer for the reactive_component Rails gem",
+  "license": "MIT",
+  "repository": "github:lluzak/reactive_component",
+  "type": "module",
+  "files": [
+    "app/javascript"
+  ],
+  "exports": {
+    "./controllers/*": "./app/javascript/reactive_component/controllers/*.js",
+    "./lib/*": "./app/javascript/reactive_component/lib/*.js"
+  },
+  "peerDependencies": {
+    "@hotwired/stimulus": ">=3",
+    "@rails/actioncable": ">=7"
+  },
   "scripts": {
     "test:js": "vitest run",
     "test:js:watch": "vitest"

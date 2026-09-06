@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.7.1] - 2026-09-06
+
+### Added
+- The JavaScript is an npm package too: `package.json` exports
+  `reactive_component/controllers/*` and `reactive_component/lib/*`, so an app
+  can `npm install` the gem's GitHub tag tarball instead of aliasing the
+  bundler path (which a Node-only Docker stage cannot resolve).
+
+### Changed
+- The renderer controller imports its utils by relative path, so it resolves
+  without an alias or importmap pin for the lib file.
+
 ## [0.7.0] - 2026-09-06
 
 ### Fixed

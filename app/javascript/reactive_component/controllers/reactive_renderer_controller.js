@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { createConsumer } from "@rails/actioncable"
-import { compileTemplate, decompress, morphElement, buildActionBody, routeMessage, duplicateIds, strictData } from "reactive_component/lib/reactive_renderer_utils"
+import { compileTemplate, decompress, morphElement, buildActionBody, routeMessage, duplicateIds, strictData } from "../lib/reactive_renderer_utils.js"
 
 const consumer = createConsumer()
 const log = (...args) => {
