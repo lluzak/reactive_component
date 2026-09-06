@@ -7,9 +7,9 @@ module ReactiveComponent
     class_attribute :filter_callback, default: nil
 
     def subscribed
-      stream_name = verified_stream_name
-      if stream_name
-        stream_from stream_name
+      @stream_name = verified_stream_name
+      if @stream_name
+        stream_from @stream_name
       else
         reject
       end
@@ -20,12 +20,8 @@ module ReactiveComponent
     end
 
     def request_update(data)
-      component_class = data['component'].constantize
       params = data['params'] || {}
-
-      model_class = component_class.live_model_class
-      record_id = data['record_id'] || params.delete('record_id')
-      record = model_class.find_by(id: record_id)
+      component_class, record = subscribed_component_and_record(data, params)
       return unless record
 
       if data['record_id'].present?
@@ -41,6 +37,24 @@ module ReactiveComponent
     end
 
     private
+
+    # The component must be a reactive component and the record must broadcast
+    # to the stream this subscriber verified: the same stream the wrapper
+    # signed into the page. Anything else is a guess at a record id the client
+    # was never shown.
+    def subscribed_component_and_record(data, params)
+      component_class = data['component'].to_s.safe_constantize
+      return unless component_class.is_a?(Class) && component_class.include?(ReactiveComponent)
+
+      record = component_class.live_model_class.find_by(id: data['record_id'] || params.delete('record_id'))
+      return unless record
+
+      stream = ReactiveComponent::Wrapper.find_stream_for(component_class, record)
+      signed = Turbo::StreamsChannel.signed_stream_name(stream)
+      return unless Turbo::StreamsChannel.verified_stream_name(signed) == @stream_name
+
+      [component_class, record]
+    end
 
     def record_matches?(record, params)
       return true unless self.class.filter_callback

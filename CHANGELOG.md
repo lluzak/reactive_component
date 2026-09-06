@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Security
+- `request_update` over the channel only answers for records whose
+  `broadcasts` stream is the one the subscriber verified. Before, any
+  subscriber could pull the rendered data of any record id of the model.
+- The channel resolves the component name with `safe_constantize` and
+  requires a class that includes `ReactiveComponent`.
+
 ### Fixed
 - The renderer controller imports its utils by bare specifier again. The
   0.7.1 relative import resolved to an undigested `/assets/` URL under

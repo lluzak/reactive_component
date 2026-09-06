@@ -44,6 +44,8 @@ When enabled, broadcast payloads are JSON-encoded, gzip-compressed, and Base64-e
 
 Sets a callback for filtering whether a record matches the current subscription parameters. Defaults to `nil` (no filtering -- all records on the stream are accepted).
 
+This is a display filter, not an authorization hook. Authorization happens before it runs: a client can only request records whose `broadcasts` stream is the signed stream it subscribed to, and only for classes that include `ReactiveComponent`. Requests for anything else are ignored.
+
 ```ruby
 ReactiveComponent::Channel.filter_callback = ->(record, params) {
   # Only re-render if the record belongs to the requested category
