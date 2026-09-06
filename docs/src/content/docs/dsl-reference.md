@@ -170,7 +170,7 @@ Registers a server-side action that can be invoked from the client.
 | Name | Type | Description |
 |:-----|:-----|:------------|
 | `action_name` | `Symbol` | The name of the action. A private method with this name must be defined on the component. |
-| `params:` | `Array<Symbol>` | Optional list of parameter names the action accepts from the client. Only these parameters will be passed through. |
+| `params:` | permit spec | Optional. The same spec `ActionController::Parameters#permit` takes: `[:title]` for scalars, `[:title, { tags: [], address: [:city] }]` for arrays and nested hashes. Anything not declared, or a nested value where a scalar was declared, is dropped before the action runs. |
 
 **Example:**
 
@@ -220,7 +220,7 @@ For actions that accept parameters, pass them as additional Stimulus params:
 </button>
 ```
 
-**Security:** Each component instance generates a signed token (`live_action_token`) that is embedded in the wrapper `<div>`. The server verifies this token before executing any action, ensuring that the component class and record cannot be tampered with. Client params are filtered with `permit` against the declared `params:` list, so the action method only ever sees the keys the component declared, and only as scalars.
+**Security:** Each component instance generates a signed token (`live_action_token`) that is embedded in the wrapper `<div>`. The server verifies this token before executing any action, ensuring that the component class and record cannot be tampered with. Client params are filtered with `permit` against the declared `params:` spec, so the action method only ever sees the keys and shapes the component declared.
 
 ---
 

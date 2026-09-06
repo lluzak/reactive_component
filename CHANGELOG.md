@@ -7,6 +7,10 @@
   list, so a nested hash or array sent for a scalar param no longer reaches
   the action method.
 
+### Added
+- `live_action` `params:` accepts the full `permit` spec, so an action can
+  declare arrays and nested hashes: `params: [:title, { tags: [] }]`.
+
 ## [0.6.2] - 2026-09-06
 
 ### Changed

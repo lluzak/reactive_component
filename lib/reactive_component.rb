@@ -192,9 +192,12 @@ module ReactiveComponent
       end
     end
 
+    # `params:` takes the same spec as `ActionController::Parameters#permit`:
+    #   live_action :move, params: [:label_id]
+    #   live_action :save, params: [:title, { tags: [], address: [:city] }]
     def live_action(action_name, params: [])
       self._live_actions = _live_actions.merge(
-        action_name.to_sym => { params: Array(params).map(&:to_sym) }
+        action_name.to_sym => { params: Array(params) }
       )
     end
 

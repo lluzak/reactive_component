@@ -19,15 +19,24 @@ class ReactiveComponent::ExecuteActionTest < ActiveSupport::TestCase
     assert_equal({ title: 'hi' }, execute({ 'title' => 'hi', 'other' => 1 }))
   end
 
+  test 'a permit-style spec declares structured params' do
+    spec = [:title, { tags: [], address: [:city] }]
+    params = ActionController::Parameters.new(
+      title: 'hi', tags: %w[a b], address: { city: 'Kraków', secret: 'x' }
+    )
+
+    assert_equal({ title: 'hi', tags: %w[a b], address: { 'city' => 'Kraków' } }, execute(params, spec: spec))
+  end
+
   private
 
-  def execute(params)
+  def execute(params, spec: [:title])
     received = nil
     klass = Class.new(ApplicationComponent) do
       include ReactiveComponent
 
       subscribes_to :message
-      live_action :rename, params: [:title]
+      live_action :rename, params: spec
 
       define_method(:rename) { |**kwargs| received = kwargs }
     end
