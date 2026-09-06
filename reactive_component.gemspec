@@ -12,13 +12,15 @@ Gem::Specification.new do |spec|
   spec.description = 'Build reactive, real-time UI components that automatically re-render ' \
                      'server-side when subscribed models change. Uses ViewComponent, Turbo ' \
                      'Streams, and ActionCable to keep your UI in sync without writing custom JavaScript.'
-  spec.homepage = 'https://github.com/przymusiala/reactive_component'
+  spec.homepage = 'https://lluzak.github.io/reactive_component/'
   spec.license = 'MIT'
   spec.required_ruby_version = '>= 3.1.0'
 
   spec.metadata['homepage_uri'] = spec.homepage
-  spec.metadata['source_code_uri'] = 'https://github.com/przymusiala/reactive_component'
-  spec.metadata['changelog_uri'] = 'https://github.com/przymusiala/reactive_component/blob/main/CHANGELOG.md'
+  spec.metadata['documentation_uri'] = spec.homepage
+  spec.metadata['source_code_uri'] = 'https://github.com/lluzak/reactive_component'
+  spec.metadata['changelog_uri'] = 'https://github.com/lluzak/reactive_component/blob/main/CHANGELOG.md'
+  spec.metadata['bug_tracker_uri'] = 'https://github.com/lluzak/reactive_component/issues'
   spec.metadata['rubygems_mfa_required'] = 'true'
 
   spec.files = Dir.chdir(__dir__) do

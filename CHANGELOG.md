@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.2] - 2026-09-06
+
+### Changed
+- Gem metadata points at the right places: homepage and documentation
+  are the GitHub Pages docs, source/changelog/issues are
+  `lluzak/reactive_component`. (First release on RubyGems since 0.1.0.)
+
 ## [0.6.1] - 2026-09-06
 
 ### Changed
