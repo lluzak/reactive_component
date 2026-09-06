@@ -209,7 +209,7 @@ class ReactiveComponent::CompilerTest < ActiveSupport::TestCase
     assert_not ReactiveComponent.sanitize_for_broadcast(false)
     assert_equal 42, ReactiveComponent.sanitize_for_broadcast(42)
     assert_in_delta(3.14, ReactiveComponent.sanitize_for_broadcast(3.14))
-    assert_equal 'hi',  ReactiveComponent.sanitize_for_broadcast('hi')
+    assert_equal 'hi', ReactiveComponent.sanitize_for_broadcast('hi')
   end
 
   test 'sanitize_for_broadcast converts Symbol to String' do
