@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.1] - 2026-09-06
+
+### Changed
+- Docs describe the 0.6 compiler (Prism, prefixed ids, typed conditions,
+  compile errors); the live-action examples use the real Stimulus params.
+- RuboCop pinned to `~> 1.90.0` so CI and local lint agree. The 0.6.0 tag
+  was never published: its commit failed lint on CI.
+
 ## [0.6.0] - 2026-09-05
 
 ### Changed
