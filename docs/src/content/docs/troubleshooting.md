@@ -82,14 +82,15 @@ mount ReactiveComponent::Engine => "/reactive_component"
 
 ### Action is registered
 
-The `data-reactive-action` attribute on the button must match a `live_action` declaration in the component class. For example:
+The `data-reactive-renderer-action-param` on the button must match a `live_action` declaration in the component class. For example:
 
 ```ruby
 live_action :submit
 ```
 
 ```html
-<button data-reactive-action="submit">Submit</button>
+<button data-action="click->reactive-renderer#performAction"
+        data-reactive-renderer-action-param="submit">Submit</button>
 ```
 
 ### Token is present
