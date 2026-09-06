@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.7.0] - 2026-09-06
 
 ### Fixed
 - `live_action` params are filtered with `permit` against the declared
