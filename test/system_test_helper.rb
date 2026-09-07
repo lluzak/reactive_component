@@ -63,6 +63,6 @@ class SystemTestCase < ActionDispatch::SystemTestCase
   end
 
   def wait_for_action_cable
-    assert_selector "[data-controller='reactive-renderer']", wait: 5
+    assert_selector "[data-reactive-renderer-connected]", wait: 5
   end
 end

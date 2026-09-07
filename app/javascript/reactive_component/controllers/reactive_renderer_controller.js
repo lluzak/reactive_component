@@ -21,6 +21,18 @@ function subscribe(streamValue, controller) {
     sub = consumer.subscriptions.create(
       { channel: "ReactiveComponent::Channel", signed_stream_name: streamValue },
       {
+        connected() {
+          sub._connected = true
+          for (const handler of sub.handlers || []) {
+            handler.subscriptionConnected()
+          }
+        },
+        disconnected() {
+          sub._connected = false
+          for (const handler of sub.handlers || []) {
+            handler.subscriptionDisconnected()
+          }
+        },
         received: async (message) => {
           const decoded = message.z ? await decompress(message.z) : message
           for (const handler of sub.handlers) {
@@ -32,6 +44,7 @@ function subscribe(streamValue, controller) {
     sub.handlers = new Set()
   }
   sub.handlers.add(controller)
+  if (sub._connected) controller.subscriptionConnected()
 }
 
 function unsubscribe(streamValue, controller) {
@@ -88,6 +101,14 @@ export default class extends Controller {
     if (this.streamValue) {
       unsubscribe(this.streamValue, this)
     }
+  }
+
+  subscriptionConnected() {
+    this.element.setAttribute("data-reactive-renderer-connected", "")
+  }
+
+  subscriptionDisconnected() {
+    this.element.removeAttribute("data-reactive-renderer-connected")
   }
 
   resolveTemplate() {
