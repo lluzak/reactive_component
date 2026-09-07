@@ -3,6 +3,9 @@
 ## [Unreleased]
 
 ### Security
+- `request_update` passes only declared `client_state` fields to the
+  component. Any other client key was set as an instance variable and
+  handed to the constructor.
 - `request_update` over the channel only answers for records whose
   `broadcasts` stream is the one the subscriber verified. Before, any
   subscriber could pull the rendered data of any record id of the model.

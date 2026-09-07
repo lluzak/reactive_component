@@ -88,4 +88,17 @@ class ReactiveComponent::ChannelTest < ActionCable::Channel::TestCase
 
     assert_empty transmissions
   end
+
+  test 'request_update only passes declared client_state params to the component' do
+    alices, = alice_and_bob_messages
+    subscribe_to_messages_of(alices.recipient)
+
+    perform :request_update, 'component' => 'MessageRowComponent',
+                             'params' => { 'record_id' => alices.id, 'selected' => true, 'message' => 'pwned' }
+
+    data = transmissions.last['data']
+
+    assert data['selected']
+    assert_includes data.values, 'For Alice'
+  end
 end

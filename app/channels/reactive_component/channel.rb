@@ -31,7 +31,8 @@ module ReactiveComponent
           transmit({ 'action' => 'remove', 'dom_id' => data['dom_id'] })
         end
       else
-        result = component_class.build_data(record, **params.symbolize_keys)
+        client_state = params.slice(*component_class._client_state_fields.keys.map(&:to_s))
+        result = component_class.build_data(record, **client_state.symbolize_keys)
         transmit({ 'action' => 'render', 'data' => result })
       end
     end
