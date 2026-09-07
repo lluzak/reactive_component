@@ -8,6 +8,8 @@ gem 'appraisal'
 gem 'capybara'
 gem 'cuprite'
 gem 'importmap-rails'
+# json 3.0 dropped the quirks_mode keyword ActiveSupport's encoder still passes
+gem 'json', '< 3'
 gem 'minitest', '~> 5.0'
 gem 'propshaft'
 gem 'puma'
