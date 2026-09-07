@@ -5,6 +5,8 @@
 ### Security
 - The actions endpoint enforces CSRF itself with `protect_from_forgery`
   instead of relying on the host's `load_defaults`.
+- `live_action` tokens expire after `ReactiveComponent.action_token_ttl`
+  (default one day). Before, a token stayed valid forever.
 - `request_update` passes only declared `client_state` fields to the
   component. Any other client key was set as an instance variable and
   handed to the constructor.

@@ -36,6 +36,16 @@ class ReactiveComponent::ActionsControllerTest < ActionDispatch::IntegrationTest
     assert_not @message.reload.starred
   end
 
+  test 'responds 404 to an expired token' do
+    stale = token
+    travel(ReactiveComponent.action_token_ttl + 1.minute) do
+      post '/reactive_component/actions', params: { token: stale, action_name: 'toggle_star' }
+    end
+
+    assert_response :not_found
+    assert_not @message.reload.starred
+  end
+
   test 'rejects a request without a CSRF token' do
     ActionController::Base.allow_forgery_protection = true
 

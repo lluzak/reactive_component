@@ -40,6 +40,14 @@ ReactiveComponent::Channel.compress = true
 
 When enabled, broadcast payloads are JSON-encoded, gzip-compressed, and Base64-encoded before being sent over ActionCable. The client-side Stimulus controller automatically detects and decompresses these payloads. This can significantly reduce bandwidth for components with large data payloads.
 
+## `ReactiveComponent.action_token_ttl`
+
+How long the signed `live_action` token minted into a wrapper stays valid. Defaults to `1.day`. After that, actions from a page rendered before the cutoff respond 404 until the page is re-rendered.
+
+```ruby
+ReactiveComponent.action_token_ttl = 4.hours
+```
+
 ## `ReactiveComponent::Channel.filter_callback`
 
 Sets a callback for filtering whether a record matches the current subscription parameters. Defaults to `nil` (no filtering -- all records on the stream are accepted).

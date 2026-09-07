@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'active_support/core_ext/integer/time'
 require 'active_support/concern'
 
 require_relative 'reactive_component/version'
@@ -14,6 +15,8 @@ module ReactiveComponent
 
   mattr_accessor :debug, default: false
   mattr_accessor :renderer, default: nil
+  # How long a live_action token minted into a page stays valid.
+  mattr_accessor :action_token_ttl, default: 1.day
 
   class Error < StandardError; end
 
@@ -204,7 +207,7 @@ module ReactiveComponent
     def live_action_token(record)
       live_action_verifier.generate(
         { c: name, m: record.class.name, r: record.id },
-        purpose: :reactive_component_action
+        purpose: :reactive_component_action, expires_in: ReactiveComponent.action_token_ttl
       )
     end
 
