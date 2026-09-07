@@ -2,6 +2,8 @@
 
 module ReactiveComponent
   class ActionsController < ActionController::Base
+    protect_from_forgery with: :exception
+
     def create
       payload = verify_token!.symbolize_keys
       component_class = payload[:c].constantize

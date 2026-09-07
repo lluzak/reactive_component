@@ -7,7 +7,7 @@ require 'rubocop/rake_task'
 RuboCop::RakeTask.new
 
 Minitest::TestTask.create do |t|
-  t.test_globs = ['test/lib/**/*_test.rb', 'test/channels/**/*_test.rb']
+  t.test_globs = ['test/lib/**/*_test.rb', 'test/channels/**/*_test.rb', 'test/controllers/**/*_test.rb']
 end
 
 namespace :test do

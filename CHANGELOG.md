@@ -3,6 +3,8 @@
 ## [Unreleased]
 
 ### Security
+- The actions endpoint enforces CSRF itself with `protect_from_forgery`
+  instead of relying on the host's `load_defaults`.
 - `request_update` passes only declared `client_state` fields to the
   component. Any other client key was set as an instance variable and
   handed to the constructor.

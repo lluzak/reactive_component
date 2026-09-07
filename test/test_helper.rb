@@ -23,3 +23,13 @@ ActiveRecord::MigrationContext.new(File.expand_path('dummy/db/migrate', __dir__)
 
 require 'minitest/autorun'
 require 'action_cable/channel/test_case'
+
+# Anonymous components built in tests register on Message through
+# subscribes_to; drop them so a later broadcast doesn't try to compile them.
+class ActiveSupport::TestCase
+  teardown do
+    next unless Message.respond_to?(:reactive_component_classes)
+
+    Message.reactive_component_classes = Message.reactive_component_classes.reject { |k| k.name.nil? }.to_set
+  end
+end
