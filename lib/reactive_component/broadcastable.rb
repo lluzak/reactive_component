@@ -16,6 +16,9 @@ module ReactiveComponent
 
         self.reactive_component_classes = reactive_component_classes | [component_class]
 
+        # A derived entity (ReactiveComponent::Entity) is not an ActiveRecord
+        # model: it has no commit callbacks and broadcasts itself.
+        return unless respond_to?(:after_create_commit)
         return if _commit_callbacks.map(&:filter).include?(:_broadcast_reactive_create)
 
         after_create_commit  :_broadcast_reactive_create

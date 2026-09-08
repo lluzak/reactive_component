@@ -8,6 +8,7 @@ require_relative 'reactive_component/compiler'
 require_relative 'reactive_component/data_evaluator'
 require_relative 'reactive_component/wrapper'
 require_relative 'reactive_component/broadcastable'
+require_relative 'reactive_component/entity'
 require_relative 'reactive_component/engine' if defined?(Rails::Engine)
 
 module ReactiveComponent
