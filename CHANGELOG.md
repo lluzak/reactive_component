@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- `ReactiveComponent::Entity`: subscribe a component to an object built from
+  several models. The entity declares its `root` record and `rebuilds_on`
+  each source model, optionally narrowed to `fields:`. See the Derived
+  Entities guide.
+- `broadcast_reactive(action)` and `broadcast_reactive_destroy` are public on
+  wired models, alongside `broadcast_reactive_update`.
+
 ## [0.7.2] - 2026-09-07
 
 ### Security

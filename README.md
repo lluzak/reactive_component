@@ -92,6 +92,7 @@ See the [full architecture guide](https://lluzak.github.io/reactive_component/ho
 - **Collection loops** -- Use `.each` in templates with automatic per-item data extraction. [Guide](https://lluzak.github.io/reactive_component/collections.html)
 - **Broadcast compression** -- Gzip-compress ActionCable payloads for large components. [Configuration](https://lluzak.github.io/reactive_component/configuration.html)
 - **Stream filtering** -- Filter broadcasts by subscription params for scoped updates. [Configuration](https://lluzak.github.io/reactive_component/configuration.html)
+- **Derived entities** -- Subscribe a component to an object built from several models. [Guide](https://lluzak.github.io/reactive_component/derived-entities.html)
 
 ## Development
 
