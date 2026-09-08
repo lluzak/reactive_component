@@ -4,12 +4,17 @@ require 'active_model'
 
 module ReactiveComponent
   # A derived entity: a plain object built on top of several ActiveRecord
-  # models that a component can `subscribes_to` like a model.
+  # models that a component can `subscribes_to` like a model. The entity owns
+  # the whole declaration — which record it is keyed on, and which changes to
+  # which models rebuild it:
   #
   #   class OrderSummary
   #     include ReactiveComponent::Entity
   #
   #     root :order
+  #     rebuilds_on Order,    fields: %i[status total_cents]
+  #     rebuilds_on Payment,  via: :order_id, fields: %i[amount]
+  #     rebuilds_on Shipment, via: :order_id, fields: %i[delivered_at]
   #
   #     def total = order.payments.sum(:amount)
   #   end
@@ -46,6 +51,34 @@ module ReactiveComponent
 
         define_singleton_method(:find)    { |id| new(name => class_name.constantize.find(id)) }
         define_singleton_method(:find_by) { |id:| (record = class_name.constantize.find_by(id: id)) && new(name => record) }
+      end
+
+      # Rebroadcast the entity after `model` commits. `via:` is the foreign key
+      # on `model` pointing at the root; omit it when `model` is the root.
+      # `fields:` narrows updates to the listed columns; create and destroy
+      # always count.
+      def rebuilds_on(model, via: nil, fields: nil)
+        entity = self
+        fields = fields&.map(&:to_s)
+
+        model.after_commit { entity.rebuild_from(self, via: via, fields: fields) }
+      end
+
+      def rebuild_from(record, via:, fields:)
+        action = commit_action(record)
+        return if action == :update && fields && !record.saved_changes.keys.intersect?(fields)
+        return find_by(id: record.public_send(via))&.broadcast_reactive(:update) if via
+
+        new(root_name => record).broadcast_reactive(action)
+      end
+
+      private
+
+      def commit_action(record)
+        return :destroy if record.destroyed?
+        return :create if record.previously_new_record?
+
+        :update
       end
     end
   end
