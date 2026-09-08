@@ -24,18 +24,17 @@ module ReactiveComponent
       end
     end
 
-    def broadcast_reactive_update
-      _broadcast_reactive(:update)
+    def broadcast_reactive(action)
+      reactive_component_classes.each { |klass| ReactiveComponent.broadcast_for(klass, self, action: action) }
     end
+
+    def broadcast_reactive_update  = broadcast_reactive(:update)
+    def broadcast_reactive_destroy = broadcast_reactive(:destroy)
 
     private
 
-    def _broadcast_reactive_create  = _broadcast_reactive(:create)
-    def _broadcast_reactive_update  = _broadcast_reactive(:update)
-    def _broadcast_reactive_destroy = _broadcast_reactive(:destroy)
-
-    def _broadcast_reactive(action)
-      reactive_component_classes.each { |klass| ReactiveComponent.broadcast_for(klass, self, action: action) }
-    end
+    def _broadcast_reactive_create  = broadcast_reactive(:create)
+    def _broadcast_reactive_update  = broadcast_reactive(:update)
+    def _broadcast_reactive_destroy = broadcast_reactive(:destroy)
   end
 end
