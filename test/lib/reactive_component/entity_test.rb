@@ -73,6 +73,18 @@ class ReactiveComponent::EntityTest < ActiveSupport::TestCase
     assert_broadcasts(@stream, 1) { labeling.destroy! }
   end
 
+  test 'live_action token resolves the entity and the action rebroadcasts it' do
+    token = MessageSummaryComponent.live_action_token(MessageSummary.new(message: @message))
+    payload = Rails.application.message_verifier(:reactive_component_action)
+                   .verify(token, purpose: :reactive_component_action).symbolize_keys
+
+    assert_equal 'MessageSummary', payload[:m]
+    record = payload[:m].constantize.find(payload[:r])
+
+    assert_broadcasts(@stream, 1) { MessageSummaryComponent.execute_action(:star, record) }
+    assert_predicate @message.reload, :starred?
+  end
+
   test 'build_data evaluates the template against the entity' do
     data = MessageSummaryComponent.build_data(MessageSummary.new(message: @message))
 
