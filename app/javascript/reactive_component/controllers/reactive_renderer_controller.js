@@ -1,59 +1,10 @@
 import { Controller } from "@hotwired/stimulus"
-import { createConsumer } from "@rails/actioncable"
-import { compileTemplate, decompress, morphElement, buildActionBody, routeMessage, duplicateIds, strictData } from "reactive_component/lib/reactive_renderer_utils"
+import { compileTemplate, morphElement, buildActionBody, routeMessage, duplicateIds, strictData } from "reactive_component/lib/reactive_renderer_utils"
+import { findSubscription, subscribe, unsubscribe } from "reactive_component/lib/cable_subscriptions"
 
-const consumer = createConsumer()
 const log = (...args) => {
   if (localStorage.getItem("devToolbar:debug") !== "false") {
     console.log("[reactive-renderer]", ...args)
-  }
-}
-
-function findSubscription(streamValue) {
-  const identifier = JSON.stringify({ channel: "ReactiveComponent::Channel", signed_stream_name: streamValue })
-  return consumer.subscriptions.subscriptions.find(s => s.identifier === identifier)
-}
-
-function subscribe(streamValue, controller) {
-  let sub = findSubscription(streamValue)
-
-  if (!sub) {
-    sub = consumer.subscriptions.create(
-      { channel: "ReactiveComponent::Channel", signed_stream_name: streamValue },
-      {
-        connected() {
-          sub._connected = true
-          for (const handler of sub.handlers || []) {
-            handler.subscriptionConnected()
-          }
-        },
-        disconnected() {
-          sub._connected = false
-          for (const handler of sub.handlers || []) {
-            handler.subscriptionDisconnected()
-          }
-        },
-        received: async (message) => {
-          const decoded = message.z ? await decompress(message.z) : message
-          for (const handler of sub.handlers) {
-            handler.handleMessage(decoded)
-          }
-        }
-      }
-    )
-    sub.handlers = new Set()
-  }
-  sub.handlers.add(controller)
-  if (sub._connected) controller.subscriptionConnected()
-}
-
-function unsubscribe(streamValue, controller) {
-  const sub = findSubscription(streamValue)
-  if (!sub) return
-
-  sub.handlers.delete(controller)
-  if (sub.handlers.size === 0) {
-    consumer.subscriptions.remove(sub)
   }
 }
 
