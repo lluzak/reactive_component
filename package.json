@@ -1,6 +1,6 @@
 {
   "name": "reactive_component",
-  "version": "0.7.2",
+  "version": "0.8.0",
   "description": "Stimulus controller and renderer for the reactive_component Rails gem",
   "license": "MIT",
   "repository": "github:lluzak/reactive_component",

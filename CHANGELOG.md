@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.8.0] - 2026-09-10
 
 ### Added
 - `ReactiveComponent::Entity`: subscribe a component to an object built from
