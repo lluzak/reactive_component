@@ -1,5 +1,10 @@
-<div class="summary">
+<div class="px-6 py-3 border-b border-gray-200 bg-yellow-50 text-sm text-gray-700 flex items-center gap-3">
+  <span class="font-medium">Summary:</span>
   <span><%= @summary.subject %></span>
-  <% if @summary.starred? %><span>★</span><% end %>
-  <span><%= @summary.label_count %> labels</span>
+  <% if @summary.starred? %><span class="text-yellow-500">★ starred</span><% end %>
+  <span class="text-gray-500"><%= @summary.label_count %> labels</span>
+  <button type="button"
+    class="ml-auto px-2 py-1 text-xs rounded bg-yellow-200 hover:bg-yellow-300"
+    data-action="click->reactive-renderer#performAction"
+    data-reactive-renderer-action-param="star">Star via entity</button>
 </div>

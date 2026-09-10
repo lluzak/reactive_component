@@ -7,6 +7,7 @@
     <%= turbo_frame_tag "message_detail", class: "block h-full" do %>
       <div class="h-full flex flex-col">
         <div class="flex-1 overflow-y-auto">
+          <%= render MessageSummaryComponent.new(summary: MessageSummary.new(message: @message)) %>
           <%= render MessageDetailComponent.new(message: @message) %>
         </div>
       </div>
