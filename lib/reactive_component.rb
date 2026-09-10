@@ -19,6 +19,14 @@ module ReactiveComponent
   # How long a live_action token minted into a page stays valid.
   mattr_accessor :action_token_ttl, default: 1.day
 
+  # Called with the ActionCable connection, returns a Hash identifying the
+  # viewer, or nil to leave presence off for that connection.
+  mattr_accessor :presence_identity, default: nil
+
+  # Presence state is the only client-authored payload this gem broadcasts,
+  # so it needs a ceiling as well as a type check. Bytes of encoded JSON.
+  mattr_accessor :presence_state_limit, default: 1024
+
   class Error < StandardError; end
 
   # A template the compiler cannot make reactive — e.g. a loop variable read in

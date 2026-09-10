@@ -89,6 +89,114 @@ class ReactiveComponent::ChannelTest < ActionCable::Channel::TestCase
     assert_empty transmissions
   end
 
+  # --- announce ---
+
+  def stream_name_for(contact)
+    Turbo::StreamsChannel.verified_stream_name(
+      Turbo::StreamsChannel.signed_stream_name([contact, :messages])
+    )
+  end
+
+  def with_presence_identity(identity)
+    original = ReactiveComponent.presence_identity
+    ReactiveComponent.presence_identity = identity.is_a?(Proc) ? identity : ->(_connection) { identity }
+    yield
+  ensure
+    ReactiveComponent.presence_identity = original
+  end
+
+  def last_presence_frame(stream)
+    ActiveSupport::JSON.decode(broadcasts(stream).last)
+  end
+
+  test 'announce stamps the identity the lambda returns' do
+    alices, = alice_and_bob_messages
+
+    with_presence_identity(id: 7, name: 'Ana') do
+      subscribe_to_messages_of(alices.recipient)
+      perform :announce, 'state' => { 'field' => 'body' }
+
+      frame = last_presence_frame(stream_name_for(alices.recipient))
+
+      assert_equal 'presence', frame['action']
+      assert_equal({ 'id' => 7, 'name' => 'Ana' }, frame['user'])
+      assert_equal({ 'field' => 'body' }, frame['state'])
+    end
+  end
+
+  test 'announce ignores an identity the client claims for itself' do
+    alices, = alice_and_bob_messages
+
+    with_presence_identity(id: 7, name: 'Ana') do
+      subscribe_to_messages_of(alices.recipient)
+      perform :announce, 'state' => { 'field' => 'body' }, 'user' => { 'id' => 99, 'name' => 'Tom' }
+
+      frame = last_presence_frame(stream_name_for(alices.recipient))
+
+      assert_equal({ 'id' => 7, 'name' => 'Ana' }, frame['user'])
+    end
+  end
+
+  test 'announce is passed the connection so the host app can identify it' do
+    alices, = alice_and_bob_messages
+    seen = nil
+
+    with_presence_identity(->(connection) { seen = connection and { id: 1 } }) do
+      subscribe_to_messages_of(alices.recipient)
+      perform :announce, 'state' => {}
+    end
+
+    assert_not_nil seen
+  end
+
+  test 'announce broadcasts nothing when no identity is configured' do
+    alices, = alice_and_bob_messages
+
+    with_presence_identity(nil) do
+      subscribe_to_messages_of(alices.recipient)
+
+      assert_broadcasts(stream_name_for(alices.recipient), 0) do
+        perform :announce, 'state' => { 'field' => 'body' }
+      end
+    end
+  end
+
+  test 'announce drops a state larger than presence_state_limit' do
+    alices, = alice_and_bob_messages
+
+    with_presence_identity(id: 7) do
+      subscribe_to_messages_of(alices.recipient)
+
+      assert_broadcasts(stream_name_for(alices.recipient), 0) do
+        perform :announce, 'state' => { 'field' => 'x' * (ReactiveComponent.presence_state_limit + 1) }
+      end
+    end
+  end
+
+  test 'announce refuses a state value that is not a primitive' do
+    alices, = alice_and_bob_messages
+
+    with_presence_identity(id: 7) do
+      subscribe_to_messages_of(alices.recipient)
+
+      assert_raises(ReactiveComponent::UnsafeBroadcastValueError) do
+        perform :announce, 'state' => { 'at' => Time.current }
+      end
+    end
+  end
+
+  test 'announce refuses an identity that would leak a record' do
+    alices, = alice_and_bob_messages
+
+    with_presence_identity(->(_connection) { { user: Contact.first } }) do
+      subscribe_to_messages_of(alices.recipient)
+
+      assert_raises(ReactiveComponent::UnsafeBroadcastValueError) do
+        perform :announce, 'state' => {}
+      end
+    end
+  end
+
   test 'request_update only passes declared client_state params to the component' do
     alices, = alice_and_bob_messages
     subscribe_to_messages_of(alices.recipient)
