@@ -22,6 +22,14 @@ module ReactiveComponent
   # Whether a component ignores the broadcast caused by its own live_action.
   mattr_accessor :skip_own_broadcasts, default: false
 
+  # Called with the ActionCable connection, returns a Hash identifying the
+  # viewer, or nil to leave presence off for that connection.
+  mattr_accessor :presence_identity, default: nil
+
+  # Presence state is the only client-authored payload this gem broadcasts,
+  # so it needs a ceiling as well as a type check. Bytes of encoded JSON.
+  mattr_accessor :presence_state_limit, default: 1024
+
   class Error < StandardError; end
 
   # A template the compiler cannot make reactive — e.g. a loop variable read in

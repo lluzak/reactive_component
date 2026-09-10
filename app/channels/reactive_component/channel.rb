@@ -37,7 +37,29 @@ module ReactiveComponent
       end
     end
 
+    # Announce this viewer to everyone on the stream. The client sends state and
+    # only state — identity is stamped here from the connection, so a tampered
+    # payload can misreport what someone is doing but never who they are.
+    def announce(data)
+      return unless @stream_name && presence_identity
+
+      state = ReactiveComponent.sanitize_for_broadcast(data['state'] || {}, source: 'presence state')
+      return if state.to_json.bytesize > ReactiveComponent.presence_state_limit
+
+      ActionCable.server.broadcast(
+        @stream_name, { 'action' => 'presence', 'user' => presence_identity, 'state' => state }
+      )
+    end
+
     private
+
+    # Resolved once per connection, not once per frame.
+    def presence_identity
+      return @presence_identity if defined?(@presence_identity)
+
+      identity = ReactiveComponent.presence_identity&.call(connection)
+      @presence_identity = identity && ReactiveComponent.sanitize_for_broadcast(identity, source: 'presence_identity')
+    end
 
     # The component must be a reactive component, the record must come from a
     # signed id this gem minted, and it must broadcast to the stream this
