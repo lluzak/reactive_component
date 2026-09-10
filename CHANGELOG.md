@@ -10,6 +10,10 @@
 - `broadcast_reactive(action)` and `broadcast_reactive_destroy` are public on
   wired models, alongside `broadcast_reactive_update`.
 
+### Fixed
+- Multibyte characters in a template (★, é, emoji) rendered as mojibake after
+  a live re-render. The client now decodes the base64 template as UTF-8.
+
 ## [0.7.2] - 2026-09-07
 
 ### Security

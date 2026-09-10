@@ -8,7 +8,7 @@ export function compileTemplate(source) {
   if (templateCache.has(source)) return templateCache.get(source)
 
   try {
-    const body = isBase64(source) ? atob(source) : source
+    const body = isBase64(source) ? decodeBase64(source) : source
     const fn = new Function("data", body)
     templateCache.set(source, fn)
     return fn
@@ -16,6 +16,12 @@ export function compileTemplate(source) {
     console.log("[reactive-renderer] ERROR compiling template:", e)
     return null
   }
+}
+
+// atob yields one char per byte, so multibyte UTF-8 (★, é, emoji) in a
+// template literal came out as mojibake once the client re-rendered.
+function decodeBase64(base64) {
+  return new TextDecoder().decode(Uint8Array.from(atob(base64), c => c.charCodeAt(0)))
 }
 
 export function clearTemplateCache() {
