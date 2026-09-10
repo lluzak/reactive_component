@@ -197,6 +197,34 @@ class ReactiveComponent::ChannelTest < ActionCable::Channel::TestCase
     end
   end
 
+  # --- presence_leave ---
+
+  test 'unsubscribing announces a leave for a viewer that had announced' do
+    alices, = alice_and_bob_messages
+
+    with_presence_identity(id: 7, name: 'Ana') do
+      subscribe_to_messages_of(alices.recipient)
+      perform :announce, 'state' => {}
+
+      assert_broadcasts(stream_name_for(alices.recipient), 1) { unsubscribe }
+
+      frame = last_presence_frame(stream_name_for(alices.recipient))
+
+      assert_equal 'presence_leave', frame['action']
+      assert_equal({ 'id' => 7, 'name' => 'Ana' }, frame['user'])
+    end
+  end
+
+  test 'unsubscribing announces nothing for a viewer that never announced' do
+    alices, = alice_and_bob_messages
+
+    with_presence_identity(id: 7, name: 'Ana') do
+      subscribe_to_messages_of(alices.recipient)
+
+      assert_broadcasts(stream_name_for(alices.recipient), 0) { unsubscribe }
+    end
+  end
+
   test 'request_update only passes declared client_state params to the component' do
     alices, = alice_and_bob_messages
     subscribe_to_messages_of(alices.recipient)

@@ -15,7 +15,10 @@ module ReactiveComponent
       end
     end
 
+    # Best effort only: a killed tab or a dead worker never gets here, which is
+    # why the client-side TTL is what actually keeps a roster honest.
     def unsubscribed
+      broadcast_presence('presence_leave') if @announced
       stop_all_streams
     end
 
@@ -46,12 +49,18 @@ module ReactiveComponent
       state = ReactiveComponent.sanitize_for_broadcast(data['state'] || {}, source: 'presence state')
       return if state.to_json.bytesize > ReactiveComponent.presence_state_limit
 
-      ActionCable.server.broadcast(
-        @stream_name, { 'action' => 'presence', 'user' => presence_identity, 'state' => state }
-      )
+      @announced = true
+      broadcast_presence('presence', state: state)
     end
 
     private
+
+    def broadcast_presence(action, state: nil)
+      payload = { 'action' => action, 'user' => presence_identity }
+      payload['state'] = state if state
+
+      ActionCable.server.broadcast(@stream_name, payload)
+    end
 
     # Resolved once per connection, not once per frame.
     def presence_identity
