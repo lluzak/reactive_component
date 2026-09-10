@@ -51,6 +51,12 @@ describe("compileTemplate", () => {
     expect(fn({ count: 42 })).toBe("<span>42</span>")
   })
 
+  it("decodes base64 templates as UTF-8", () => {
+    const source = Buffer.from('return "★ " + data.name', "utf8").toString("base64")
+    const fn = compileTemplate(source)
+    expect(fn({ name: "Zoë" })).toBe("★ Zoë")
+  })
+
   it("returns cached function on second call with same source", () => {
     const source = 'return data.x'
     const fn1 = compileTemplate(source)
