@@ -207,6 +207,22 @@ class ReactiveComponent::BroadcastableTest < ActiveSupport::TestCase
     Message.reactive_component_classes = original_classes
   end
 
+  test 'broadcast_reactive_destroy sends a destroy for all registered components' do
+    original_classes = Message.reactive_component_classes
+    Message.reactive_component_classes = Set[MessageRowComponent]
+
+    @message.save!
+    stream = MessageRowComponent._broadcast_config[:stream].call(@message)
+    stream_name = Turbo::StreamsChannel.verified_stream_name(
+      Turbo::StreamsChannel.signed_stream_name(stream)
+    )
+
+    assert_broadcasts(stream_name, 1) { @message.broadcast_reactive_destroy }
+    assert_equal 'destroy', ActiveSupport::JSON.decode(broadcasts(stream_name).last)['action']
+  ensure
+    Message.reactive_component_classes = original_classes
+  end
+
   # --- default stream (no broadcasts declared) ---
 
   test 'broadcast_for uses record as default stream when no broadcasts config' do

@@ -116,7 +116,7 @@ When `prepend_target` is provided, newly created records are rendered server-sid
 
 Manually triggers a reactive broadcast for the model record. This is a public instance method available on any model that has been wired by `subscribes_to`. It broadcasts an `:update` event to all connected components without requiring the record to be saved or touched.
 
-This is useful when a related record changes (e.g. a join table) and the component needs to re-render, but the model itself wasn't modified.
+This is useful when a related record changes (e.g. a join table) and the component needs to re-render, but the model itself wasn't modified. `broadcast_reactive_destroy` and `broadcast_reactive(action)` are available as well. For an object built from several models, see [Derived Entities](https://lluzak.github.io/reactive_component/derived-entities.html).
 
 **Example — broadcasting after a join table change:**
 

@@ -16,6 +16,9 @@ module ReactiveComponent
 
         self.reactive_component_classes = reactive_component_classes | [component_class]
 
+        # A derived entity (ReactiveComponent::Entity) is not an ActiveRecord
+        # model: it has no commit callbacks and broadcasts itself.
+        return unless respond_to?(:after_create_commit)
         return if _commit_callbacks.map(&:filter).include?(:_broadcast_reactive_create)
 
         after_create_commit  :_broadcast_reactive_create
@@ -24,18 +27,17 @@ module ReactiveComponent
       end
     end
 
-    def broadcast_reactive_update
-      _broadcast_reactive(:update)
+    def broadcast_reactive(action)
+      reactive_component_classes.each { |klass| ReactiveComponent.broadcast_for(klass, self, action: action) }
     end
+
+    def broadcast_reactive_update  = broadcast_reactive(:update)
+    def broadcast_reactive_destroy = broadcast_reactive(:destroy)
 
     private
 
-    def _broadcast_reactive_create  = _broadcast_reactive(:create)
-    def _broadcast_reactive_update  = _broadcast_reactive(:update)
-    def _broadcast_reactive_destroy = _broadcast_reactive(:destroy)
-
-    def _broadcast_reactive(action)
-      reactive_component_classes.each { |klass| ReactiveComponent.broadcast_for(klass, self, action: action) }
-    end
+    def _broadcast_reactive_create  = broadcast_reactive(:create)
+    def _broadcast_reactive_update  = broadcast_reactive(:update)
+    def _broadcast_reactive_destroy = broadcast_reactive(:destroy)
   end
 end

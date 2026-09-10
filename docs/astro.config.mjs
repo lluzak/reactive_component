@@ -23,6 +23,7 @@ export default defineConfig({
         { label: 'DSL Reference', link: '/dsl-reference/' },
         { label: 'Nested Components', link: '/nested-components/' },
         { label: 'Collections & Loops', link: '/collections/' },
+        { label: 'Derived Entities', link: '/derived-entities/' },
         { label: 'Configuration', link: '/configuration/' },
         { label: 'Troubleshooting', link: '/troubleshooting/' },
       ],
