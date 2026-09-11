@@ -10,6 +10,15 @@
           <%= render MessageSummaryComponent.new(summary: MessageSummary.new(message: @message)) %>
           <%= render MessageDetailComponent.new(message: @message) %>
         </div>
+        <div class="border-t border-gray-200 bg-white px-6 py-4"
+             data-controller="presence"
+             data-presence-stream-value="<%= ReactiveComponent.signed_stream(current_contact, :messages) %>">
+          <label class="block text-xs uppercase tracking-wide text-gray-400 mb-1">Reply</label>
+          <textarea rows="3" id="reply_body"
+                    class="w-full rounded border border-gray-200 p-2 text-sm"
+                    data-presence-field="reply_body"
+                    data-action="focus->presence#claim blur->presence#release"></textarea>
+        </div>
       </div>
     <% end %>
   </div>

@@ -48,8 +48,4 @@ class MessagesController < ApplicationController
     @folder_config[:scope].call(current_contact).includes(:sender, :recipient, :labels).newest_first
   end
 
-  def current_contact
-    @current_contact ||= Contact.first
-  end
-  helper_method :current_contact
 end
