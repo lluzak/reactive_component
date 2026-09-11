@@ -8,11 +8,15 @@ Capybara.server = :puma, { Silent: true }
 Capybara.default_max_wait_time = 5
 
 class SystemTestCase < ActionDispatch::SystemTestCase
+  # The dummy layout pulls Tailwind from a CDN. Nothing here asserts on styling,
+  # but cuprite raises if that request is still in flight when a page load
+  # finishes, which fails a different test on every slow network.
   driven_by :cuprite, screen_size: [1280, 800], options: {
     headless: true,
     process_timeout: 60,
     timeout: 15,
-    js_errors: true
+    js_errors: true,
+    pending_connection_errors: false
   }
 
   def setup
