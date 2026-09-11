@@ -47,7 +47,21 @@
         background: #22c55e; box-shadow: 0 0 0 2px #111827;
       }
 
+      /* You are following them: a full white ring. */
       .viewer[data-following="true"] { box-shadow: 0 0 0 2px #fff; }
+
+      /* They are following you: an eye on the opposite corner from the dot. */
+      .viewer[data-watching-me="true"]::before {
+        content: "\25C9";
+        position: absolute; right: -3px; top: -3px;
+        width: 11px; height: 11px; border-radius: 50%;
+        background: #111827; color: #fff;
+        font-size: 8px; line-height: 11px; text-align: center;
+      }
+
+      .legend { display: inline-flex; gap: 10px; color: #6b7280; font-size: 10px; }
+      .legend b { color: #374151; font-weight: 600; }
+      .following-pill { background: #111827; }
 
       /* Following somebody should be obvious, not a 2px ring you have to hunt. */
       .following-pill {
@@ -152,9 +166,11 @@
     if (!list) return
 
     const presence = event.target
-    const following = window.Stimulus
-      ? window.Stimulus.getControllerForElementAndIdentifier(presence, "presence")?.watching
+    const controller = window.Stimulus
+      ? window.Stimulus.getControllerForElementAndIdentifier(presence, "presence")
       : null
+    const following = controller?.watching ?? null
+    const selfId = controller?.roster?.selfId ?? null
 
     list.replaceChildren(...event.detail.others.map((entry) => {
       const sharing = entry.state.sharing === true
@@ -169,9 +185,14 @@
       chip.style.setProperty("--avatar-color", entry.user.color || "#64748b")
       chip.textContent = entry.user.initials || entry.user.name.slice(0, 2).toUpperCase()
 
-      chip.title = sharing
-        ? `${entry.user.name} — ${isFollowed ? "following their cursor" : "click to follow their cursor"}`
-        : entry.user.name
+      const watchingMe = entry.state.watching === selfId
+      chip.dataset.watchingMe = String(watchingMe)
+
+      chip.title = [
+        entry.user.name,
+        sharing ? (isFollowed ? "you are following their cursor" : "sharing — click to follow") : "not sharing a cursor",
+        watchingMe ? "following your cursor" : null
+      ].filter(Boolean).join(" · ")
 
       if (sharing) {
         chip.type = "button"
@@ -210,21 +231,10 @@
       }
     }
 
-    // The other direction: somebody is watching your cursor.
-    const selfId = window.Stimulus
-      ? window.Stimulus.getControllerForElementAndIdentifier(presence, "presence")?.roster?.selfId
-      : null
-    const watchers = event.detail.others.filter((entry) => entry.state.watching === selfId)
-    const followersSlot = document.getElementById("followers_status")
-
-    if (followersSlot) {
-      followersSlot.textContent = watchers.length
-        ? `${watchers.map((entry) => entry.user.name).join(", ")} ${watchers.length === 1 ? "is" : "are"} following your cursor`
-        : ""
-    }
-
-    const hint = document.getElementById("cursor_hint")
-    if (hint) hint.hidden = !!followingEntry
+    // Everything else is on the avatars themselves, so the only prose left is
+    // the one relationship you can act on.
+    const legend = document.getElementById("cursor_hint")
+    if (legend) legend.hidden = event.detail.others.length === 0
   })
 
   // Nothing leaves this browser until somebody follows you, so say so rather
