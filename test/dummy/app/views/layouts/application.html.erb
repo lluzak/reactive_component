@@ -5,6 +5,48 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
+    <style>
+      /* The gem stamps attributes and appends the cursor layer; everything it
+         looks like is the app's decision, so it lives here. */
+      .reactive-presence-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 30; }
+
+      .reactive-presence-cursor {
+        position: absolute; top: 0; left: 0;
+        width: 14px; height: 14px;
+        border-radius: 50% 50% 50% 2px;
+        background: var(--presence-color, #64748b);
+        box-shadow: 0 1px 3px rgba(0,0,0,.35);
+        transition: transform 85ms linear;
+        will-change: transform;
+      }
+
+      .reactive-presence-cursor::after {
+        content: attr(data-presence-user);
+        position: absolute; top: 16px; left: 10px;
+        padding: 1px 6px; border-radius: 3px 8px 8px 8px;
+        background: var(--presence-color, #64748b);
+        color: #fff; font-size: 10px; line-height: 1.5; white-space: nowrap;
+      }
+
+      .viewer {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 2px 8px 2px 2px; border-radius: 999px;
+        background: rgba(255,255,255,.08); color: #e5e7eb;
+        font-size: 12px; line-height: 1.6; cursor: default;
+      }
+
+      .viewer .avatar {
+        width: 20px; height: 20px; border-radius: 50%;
+        display: grid; place-items: center;
+        background: var(--avatar-color, #64748b);
+        color: #fff; font-size: 9px; font-weight: 700; letter-spacing: .02em;
+      }
+
+      .viewer[data-sharing="true"] { cursor: pointer; }
+      .viewer[data-sharing="true"]:hover { background: rgba(255,255,255,.18); }
+      .viewer[data-following="true"] { outline: 1.5px solid var(--avatar-color, #64748b); background: transparent; }
+      .viewer .hint { font-size: 10px; opacity: .65; }
+    </style>
     <%# The viewer rides the socket URL so each tab connects as itself. %>
     <meta name="action-cable-url" content="<%= "/cable?as=#{viewer_id}" %>">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -67,18 +109,57 @@
     const list = document.getElementById("viewers")
     if (!list) return
 
+    const presence = event.target
+    const following = window.Stimulus
+      ? window.Stimulus.getControllerForElementAndIdentifier(presence, "presence")?.watching
+      : null
+
     list.replaceChildren(...event.detail.others.map((entry) => {
-      const chip = document.createElement("button")
-      chip.type = "button"
-      chip.className = "viewer text-xs px-2 py-1 rounded bg-gray-100"
-      chip.textContent = entry.user.name
+      const sharing = entry.state.sharing === true
+      const isFollowed = following === entry.user.id
+
+      const chip = document.createElement(sharing ? "button" : "span")
+      chip.className = "viewer"
       chip.dataset.viewerId = entry.user.id
-      chip.dataset.sharing = String(entry.state.sharing === true)
+      chip.dataset.sharing = String(sharing)
+      chip.dataset.following = String(isFollowed)
       chip.dataset.watching = entry.state.watching == null ? "" : String(entry.state.watching)
-      chip.dataset.action = "presence#watch"
-      chip.dataset.presenceUserIdParam = entry.user.id
+      chip.style.setProperty("--avatar-color", entry.user.color || "#64748b")
+      chip.title = entry.user.name
+
+      const avatar = document.createElement("span")
+      avatar.className = "avatar"
+      avatar.textContent = entry.user.initials || entry.user.name.slice(0, 2).toUpperCase()
+
+      const name = document.createElement("span")
+      name.textContent = entry.user.name
+
+      chip.append(avatar, name)
+
+      if (sharing) {
+        chip.type = "button"
+        chip.dataset.action = "presence#watch"
+        chip.dataset.presenceUserIdParam = entry.user.id
+
+        const hint = document.createElement("span")
+        hint.className = "hint"
+        hint.textContent = isFollowed ? "following" : "follow"
+        chip.append(hint)
+      }
+
       return chip
     }))
+  })
+
+  // Nothing leaves this browser until somebody follows you, so say so rather
+  // than letting the button look inert.
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest("#share_cursor")
+    if (!button) return
+
+    button.textContent = "Sharing your cursor"
+    button.classList.add("bg-white", "font-medium", "text-gray-900")
+    button.disabled = true
   })
 </script>
   </body>

@@ -1,6 +1,6 @@
 <%= turbo_stream_from current_contact, :messages %>
 
-<div class="h-full bg-gray-100 p-6"
+<div class="relative h-full bg-gray-100 p-6"
      data-controller="presence board"
      data-presence-cursors-value="true"
      data-presence-anchor="board"
@@ -10,8 +10,9 @@
   <div class="mb-4 flex items-center gap-3">
     <h1 class="text-lg font-bold text-gray-900">Board</h1>
     <div id="viewers" class="flex gap-2"></div>
-    <button type="button" id="share_cursor" class="text-xs text-gray-500"
-            data-action="presence#shareCursor">Share cursor</button>
+    <button type="button" id="share_cursor"
+            class="rounded border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-white"
+            data-action="presence#shareCursor">Share my cursor</button>
   </div>
 
   <div class="grid grid-cols-3 gap-4">
