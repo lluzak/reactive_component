@@ -11,6 +11,9 @@
 - `ReactiveComponent.signed_stream` mints the stream name a `presence`
   controller needs on a plain element.
 - `ReactiveComponent.presence_state_limit` caps client-authored presence state.
+- Roster entries expire after 90s rather than 30s, and a tab announces as soon
+  as it is foregrounded. Browsers throttle hidden-tab timers to about once a
+  minute, so a shorter expiry dropped anyone who switched tabs.
 - `presence :viewers` declares an ivar the browser fills from its roster, so a
   template can render who else is here. The server renders it empty; only plain
   property reads on the loop item compile, and anything needing per-item server

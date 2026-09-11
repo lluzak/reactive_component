@@ -4,7 +4,7 @@
 // dependency and is not installed, so anything that imports it is invisible to
 // the unit tests. Keeping this module pure is what makes the roster testable.
 export class PresenceRoster {
-  constructor({ ttl = 30000 } = {}) {
+  constructor({ ttl = 90000 } = {}) {
     this.ttl = ttl
     this.selfId = null
     this.entries = new Map()
