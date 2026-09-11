@@ -64,6 +64,10 @@ module ReactiveComponent
 
     module_function
 
+    def presence_fields_for(component_class)
+      component_class.respond_to?(:_presence_fields) ? component_class._presence_fields : []
+    end
+
     def compile(component_class)
       erb_source = read_erb(component_class)
       erb_ruby = ReactiveComponent::Erubi.new(erb_source).src
@@ -86,7 +90,8 @@ module ReactiveComponent
       end
 
       js_function = begin
-        ReactiveComponent::Transpiler.call(erb_ruby, extraction: extraction, nestable_checker: nestable_checker)
+        ReactiveComponent::Transpiler.call(erb_ruby, extraction: extraction, nestable_checker: nestable_checker,
+                                                     presence_fields: presence_fields_for(component_class))
       rescue ReactiveComponent::CompileError => e
         raise ReactiveComponent::CompileError, "#{component_class.name}: #{e.message}"
       end

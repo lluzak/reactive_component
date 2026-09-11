@@ -48,6 +48,7 @@ module ReactiveComponent
     class_attribute :_subscribed_fields, instance_writer: false, default: nil
     class_attribute :_strategy, instance_writer: false, default: nil
     class_attribute :_broadcast_later, instance_writer: false, default: true
+    class_attribute :_presence_fields, instance_writer: false, default: []
   end
 
   def render_in(view_context, &)
@@ -87,11 +88,6 @@ module ReactiveComponent
   # we raise so the developer fixes the template.
   class UnsafeBroadcastValueError < StandardError; end
 
-  # Types that are safe to ship verbatim in a broadcast payload. Everything
-  # else must be converted in the template (e.g. `@user.name` instead of
-  # `@user`, `@date.iso8601` instead of `@date`).
-  SAFE_PRIMITIVE_TYPES = [NilClass, TrueClass, FalseClass, Integer, Float, String].freeze
-
   def self.sanitize_for_broadcast(value, source: nil)
     return value if value.nil? || value.is_a?(TrueClass) || value.is_a?(FalseClass)
     return value if value.is_a?(Integer) || value.is_a?(Float) || value.is_a?(String)
@@ -130,10 +126,7 @@ module ReactiveComponent
   def self.signal_for(component_class, record) = { 'id' => record.id, 'dom_id' => component_class.dom_id_for(record) }
 
   # The signed stream name to hand a `presence` controller. Components get one
-  # from the wrapper; a plain element needs this.
-  #
-  #   <div data-controller="presence"
-  #        data-presence-stream-value="<%= ReactiveComponent.signed_stream(@board) %>">
+  # from their wrapper; a plain element needs this.
   def self.signed_stream(*streamables)
     Turbo::StreamsChannel.signed_stream_name(streamables)
   end
@@ -213,6 +206,16 @@ module ReactiveComponent
 
     def live_model_attr
       _live_model_attr
+    end
+
+    # Declares an ivar the client fills in from its presence roster, e.g.
+    #
+    #   presence :viewers
+    #   <% @viewers.each do |viewer| %>
+    #
+    # The server never evaluates it and never ships a value for it.
+    def presence(name)
+      self._presence_fields = _presence_fields | [name.to_sym]
     end
 
     def client_state(name, default: nil)
@@ -352,6 +355,9 @@ module ReactiveComponent
         # emits the bare name in the destructure for extracted chains, so don't
         # ship it and don't sanitize-raise on it.
         next if live_model_attr && ivar_name == live_model_attr.to_s
+        # Declared by `presence` — the client's roster fills this slot, and the
+        # server has nothing to evaluate.
+        next if _presence_fields.include?(ivar_name.to_sym)
 
         value = kwargs.key?(ivar_name.to_sym) ? kwargs[ivar_name.to_sym] : evaluator.evaluate("@#{ivar_name}")
         data[ivar_name] = ReactiveComponent.sanitize_for_broadcast(value, source: "@#{ivar_name}")
