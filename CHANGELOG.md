@@ -11,6 +11,11 @@
 - `ReactiveComponent.signed_stream` mints the stream name a `presence`
   controller needs on a plain element.
 - `ReactiveComponent.presence_state_limit` caps client-authored presence state.
+- Live cursors, opt-in on both ends. A sharer publishes to a stream named for
+  them and a watcher subscribes to one person, so frames are never sent to
+  anyone who did not ask. A sharer nobody watches does not sample the mouse at
+  all. Coordinates are a fraction of a named anchor rather than page pixels, so
+  they survive a different viewport width or scroll offset.
 
 ## [0.8.1] - 2026-09-11
 
