@@ -16,7 +16,8 @@ export default class extends Controller {
     sgid: { type: String, default: "" },
     params: { type: Object, default: {} },
     fieldMap: { type: Object, default: {} },
-    skipOwnBroadcasts: { type: Boolean, default: false }
+    skipOwnBroadcasts: { type: Boolean, default: false },
+    presence: { type: Array, default: [] }
   }
 
   connect() {
@@ -30,10 +31,35 @@ export default class extends Controller {
     }
 
     this.clientState = { ...this.stateValue }
+    this.presenceData = {}
     this.lastServerData = Object.keys(this.dataValue).length > 0 ? this.dataValue : null
+
+    // Empty until a roster arrives, never undefined: a broadcast can reach us
+    // before any presence event does, and `for (let v of undefined)` throws.
+    for (const field of this.presenceValue) this.presenceData[field] = []
+
+    // A presence controller is an ancestor, so its event bubbles away from us
+    // rather than towards us. Listen at the document and check containment.
+    if (this.presenceValue.length) {
+      this.onPresence = (event) => {
+        if (!event.target.contains(this.element)) return
+
+        for (const field of this.presenceValue) this.presenceData[field] = event.detail.others
+        if (this.lastServerData && this.renderFn) this.render(this.renderData())
+      }
+      document.addEventListener("reactive-presence:changed", this.onPresence)
+    }
 
     const encoded = this.resolveTemplate()
     this.renderFn = encoded ? compileTemplate(encoded) : null
+
+    // Change events only fire when the roster changes, so a component mounted
+    // into a room that has already settled would show nobody until someone
+    // came or went. Ask the presence ancestor for what it has now — after the
+    // template compiles, so the answer can render straight away.
+    if (this.presenceValue.length) {
+      this.element.dispatchEvent(new CustomEvent("reactive-presence:request", { bubbles: true }))
+    }
 
     if (!this.renderFn) {
       if (!this.streamValue) return
@@ -45,6 +71,7 @@ export default class extends Controller {
   }
 
   disconnect() {
+    if (this.onPresence) document.removeEventListener("reactive-presence:changed", this.onPresence)
     if (this.streamValue) {
       unsubscribe(this.streamValue, this)
     }
@@ -84,7 +111,7 @@ export default class extends Controller {
       case "render":
         this.log("render", this.element.id, route.data)
         this.lastServerData = route.data
-        if (this.renderFn) this.render({ ...route.data, ...this.clientState })
+        if (this.renderFn) this.render(this.renderData())
         break
 
       case "request_update":
@@ -95,7 +122,7 @@ export default class extends Controller {
       case "update":
         this.log("update", this.element.id, route.data)
         this.lastServerData = route.data
-        if (this.renderFn) this.render({ ...route.data, ...this.clientState })
+        if (this.renderFn) this.render(this.renderData())
         this.element.dispatchEvent(new CustomEvent("reactive-renderer:updated", {
           bubbles: true,
           detail: { data: route.data }
@@ -128,6 +155,10 @@ export default class extends Controller {
     }, 50)
   }
 
+  renderData() {
+    return { ...this.lastServerData, ...this.clientState, ...this.presenceData }
+  }
+
   render(data) {
     // ReactiveComponent.debug marks the wrapper; a missing key then throws
     // with its name rather than rendering as a silent falsy/undefined.
@@ -152,7 +183,7 @@ export default class extends Controller {
       if (dataKey && dataKey in this.lastServerData) {
         rollbackData = { ...this.lastServerData }
         this.lastServerData[dataKey] = !this.lastServerData[dataKey]
-        this.render({ ...this.lastServerData, ...this.clientState })
+        this.render(this.renderData())
       }
     }
     // --- End optimistic ---
@@ -167,7 +198,7 @@ export default class extends Controller {
     }).then(response => {
       if (!response.ok && rollbackData) {
         this.lastServerData = rollbackData
-        this.render({ ...this.lastServerData, ...this.clientState })
+        this.render(this.renderData())
       }
       if (redirect && response.ok) {
         Turbo.visit(redirect)
@@ -179,7 +210,7 @@ export default class extends Controller {
     }).catch(() => {
       if (rollbackData) {
         this.lastServerData = rollbackData
-        this.render({ ...this.lastServerData, ...this.clientState })
+        this.render(this.renderData())
       }
     })
   }
@@ -231,7 +262,7 @@ export default class extends Controller {
   // than leaving the click with nothing to show.
   rerender() {
     if (this.lastServerData && this.renderFn) {
-      requestAnimationFrame(() => this.render({ ...this.lastServerData, ...this.clientState }))
+      requestAnimationFrame(() => this.render(this.renderData()))
     } else if (this.strategyValue === "notify") {
       this.requestUpdate()
     }

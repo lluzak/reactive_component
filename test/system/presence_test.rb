@@ -100,6 +100,20 @@ class PresenceTest < SystemTestCase
     end
   end
 
+  test 'a presence collection renders through the component template' do
+    open_message_as(:ana, @bob)
+    open_message_as(:tom, @charlie)
+
+    using_session(:tom) do
+      assert_selector '.detail-viewer', text: @bob.name, wait: 10
+    end
+
+    using_session(:ana) do
+      assert_selector '.detail-viewer', text: @charlie.name, wait: 10
+      assert_no_selector '.detail-viewer', text: @bob.name
+    end
+  end
+
   test 'a viewer alone on the page is not in their own roster' do
     open_message_as(:ana, @bob)
 

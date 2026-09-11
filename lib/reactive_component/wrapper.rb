@@ -43,17 +43,22 @@ module ReactiveComponent
         attrs << %(data-reactive-renderer-field-map-value="#{ERB::Util.html_escape(component_class.expression_field_map.to_json)}")
       end
 
-      if client_state
-        attrs << %(data-reactive-renderer-state-value="#{ERB::Util.html_escape(client_state.to_json)}")
+      presence_fields = component_class._presence_fields
 
-        # A push wrapper renders from this payload until the first broadcast
-        # arrives. A notify one asks the server for its data instead, so the
-        # attribute would be the page a second time, both branches of every
-        # extracted expression included.
-        unless strategy.to_s == 'notify'
-          initial_data = component_class.build_data(record, **client_state.symbolize_keys)
-          attrs << %(data-reactive-renderer-data-value="#{ERB::Util.html_escape(initial_data.to_json)}")
-        end
+      attrs << %(data-reactive-renderer-state-value="#{ERB::Util.html_escape(client_state.to_json)}") if client_state
+
+      if presence_fields.any?
+        attrs << %(data-reactive-renderer-presence-value="#{ERB::Util.html_escape(presence_fields.map(&:to_s).to_json)}")
+      end
+
+      # A push wrapper renders from this payload until the first broadcast
+      # arrives, and a presence field re-renders before there is any broadcast
+      # at all. A notify one asks the server for its data instead, so the
+      # attribute would be the page a second time, both branches of every
+      # extracted expression included.
+      if (client_state || presence_fields.any?) && strategy.to_s != 'notify'
+        initial_data = component_class.build_data(record, **(client_state || {}).symbolize_keys)
+        attrs << %(data-reactive-renderer-data-value="#{ERB::Util.html_escape(initial_data.to_json)}")
       end
 
       attrs << %(data-reactive-renderer-strategy-value="#{strategy}") if strategy
