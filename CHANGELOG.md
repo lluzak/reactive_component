@@ -7,6 +7,14 @@
   `ReactiveComponent::Channel.compress` lived on an autoloaded class, so an app
   had to set it in `to_prepare` or lose it on the first reload. It still works
   and writes through to the new setting.
+- Presence: `ReactiveComponent.presence_identity` names the viewer behind a
+  connection, and a `presence` Stimulus controller keeps a self-expiring roster
+  of everyone on a stream. It stamps `data-presence-here` and
+  `data-presence-busy` rather than rendering, so styling stays with the host
+  app. No Redis set, no roster table, no sweeper job.
+- `ReactiveComponent.signed_stream` mints the stream name a `presence`
+  controller needs on a plain element.
+- `ReactiveComponent.presence_state_limit` caps client-authored presence state.
 
 ## [0.9.1] - 2026-09-17
 
