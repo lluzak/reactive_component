@@ -120,6 +120,15 @@ module ReactiveComponent
   end
   private_class_method :raise_unsafe!
 
+  # The signed stream name to hand a `presence` controller. Components get one
+  # from the wrapper; a plain element needs this.
+  #
+  #   <div data-controller="presence"
+  #        data-presence-stream-value="<%= ReactiveComponent.signed_stream(@board) %>">
+  def self.signed_stream(*streamables)
+    Turbo::StreamsChannel.signed_stream_name(streamables)
+  end
+
   def self.broadcast_for(component_class, record, action:)
     return unless component_class._subscribed_events.include?(action)
 

@@ -49,6 +49,13 @@ module ReactiveComponent
       state = ReactiveComponent.sanitize_for_broadcast(data['state'] || {}, source: 'presence state')
       return if state.to_json.bytesize > ReactiveComponent.presence_state_limit
 
+      # ActionCable echoes a broadcast back to its sender, so the client has to
+      # know its own identity to stay out of its own roster. Telling it here
+      # beats making the host app repeat the id in a data attribute. Every
+      # time, not once: controllers share one subscription per stream, so one
+      # that joins later would otherwise never hear it.
+      transmit({ 'action' => 'presence_self', 'user' => presence_identity })
+
       @announced = true
       broadcast_presence('presence', state: state)
     end
