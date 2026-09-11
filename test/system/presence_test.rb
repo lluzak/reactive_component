@@ -58,6 +58,26 @@ class PresenceTest < SystemTestCase
     using_session(:tom) { assert_selector '[data-presence-here]', wait: 5 }
   end
 
+  test 'sharing a cursor and choosing whose to watch both reach the other viewer' do
+    open_message_as(:ana, @bob)
+    open_message_as(:tom, @charlie)
+
+    using_session(:tom) { assert_selector ".viewer[data-viewer-id='#{@bob.id}']", wait: 10 }
+
+    using_session(:ana) { click_button 'Share cursor' }
+
+    using_session(:tom) do
+      assert_selector ".viewer[data-viewer-id='#{@bob.id}'][data-sharing='true']", wait: 10
+      find(".viewer[data-viewer-id='#{@bob.id}']").click
+    end
+
+    # Tom's choice is announced like any other state, so Ana can see that
+    # someone is watching her — which is what gates cursor sampling in step 9.
+    using_session(:ana) do
+      assert_selector ".viewer[data-viewer-id='#{@charlie.id}'][data-watching='#{@bob.id}']", wait: 10
+    end
+  end
+
   test 'a viewer alone on the page is not in their own roster' do
     open_message_as(:ana, @bob)
 

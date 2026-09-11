@@ -16,6 +16,8 @@ export default class extends Controller {
 
     this.roster = new PresenceRoster({ ttl: this.ttlValue })
     this.state = {}
+    this.sharing = false
+    this.watching = null
 
     subscribe(this.streamValue, this)
 
@@ -71,7 +73,38 @@ export default class extends Controller {
   }
 
   announce() {
-    findSubscription(this.streamValue)?.perform("announce", { state: this.state })
+    findSubscription(this.streamValue)?.perform("announce", {
+      state: { ...this.state, sharing: this.sharing, watching: this.watching }
+    })
+  }
+
+  // Both halves of the cursor opt-in ride the roster, so every peer can see who
+  // is broadcasting and who is being watched. That second fact is what lets a
+  // sharer stop sampling the mouse when nobody is looking.
+  shareCursor() {
+    this.sharing = true
+    this.announce()
+  }
+
+  stopSharingCursor() {
+    this.sharing = false
+    this.announce()
+  }
+
+  watch(event) {
+    // As given, never coerced: Stimulus already turns a numeric param into a
+    // number, and an id that is a UUID or any other string has to stay one or
+    // it becomes NaN and silently matches nobody.
+    const userId = event.params.userId
+    const subscription = findSubscription(this.streamValue)
+
+    if (this.watching != null) subscription?.perform("unwatch_cursor", { user_id: this.watching })
+
+    this.watching = this.watching === userId ? null : userId
+
+    if (this.watching != null) subscription?.perform("watch_cursor", { user_id: this.watching })
+
+    this.announce()
   }
 
   claim(event) {
