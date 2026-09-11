@@ -93,6 +93,7 @@ See the [full architecture guide](https://lluzak.github.io/reactive_component/ho
 - **Broadcast compression** -- Gzip-compress ActionCable payloads for large components. [Configuration](https://lluzak.github.io/reactive_component/configuration.html)
 - **Stream filtering** -- Filter broadcasts by subscription params for scoped updates. [Configuration](https://lluzak.github.io/reactive_component/configuration.html)
 - **Derived entities** -- Subscribe a component to an object built from several models. [Guide](https://lluzak.github.io/reactive_component/derived-entities.html)
+- **Presence** -- Show who else is viewing, and the field they are in, over the stream you already broadcast on. [Guide](https://lluzak.github.io/reactive_component/presence.html)
 
 ## Development
 

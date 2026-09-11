@@ -1,5 +1,17 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Presence: `ReactiveComponent.presence_identity` names the viewer behind a
+  connection, and a `presence` Stimulus controller keeps a self-expiring roster
+  of everyone on a stream. It stamps `data-presence-here` and
+  `data-presence-busy` rather than rendering, so styling stays with the host
+  app. No Redis set, no roster table, no sweeper job.
+- `ReactiveComponent.signed_stream` mints the stream name a `presence`
+  controller needs on a plain element.
+- `ReactiveComponent.presence_state_limit` caps client-authored presence state.
+
 ## [0.8.1] - 2026-09-11
 
 ### Added

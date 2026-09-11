@@ -48,6 +48,30 @@ How long the signed `live_action` token minted into a wrapper stays valid. Defau
 ReactiveComponent.action_token_ttl = 4.hours
 ```
 
+## `ReactiveComponent.presence_identity`
+
+Says who a connection belongs to, which is what turns presence on. Defaults to `nil`, meaning presence is off and no frame is broadcast.
+
+```ruby
+ReactiveComponent.presence_identity = lambda do |connection|
+  user = connection.current_user or next nil
+
+  { id: user.id, name: user.first_name, color: user.avatar_color }
+end
+```
+
+The lambda receives the ActionCable connection and returns a Hash of primitives, or `nil` to leave that connection out of every roster. Returning a record raises `UnsafeBroadcastValueError` rather than broadcasting every column to everyone on the stream. See [Presence](/reactive_component/presence/).
+
+## `ReactiveComponent.presence_state_limit`
+
+The largest presence state a client may broadcast, in bytes of encoded JSON. Defaults to `1024`. Frames above it are dropped.
+
+```ruby
+ReactiveComponent.presence_state_limit = 2048
+```
+
+Presence state is the only client-authored payload this gem broadcasts, so unlike every other broadcast it needs a ceiling as well as a type check.
+
 ## `ReactiveComponent::Channel.filter_callback`
 
 Sets a callback for filtering whether a record matches the current subscription parameters. Defaults to `nil` (no filtering -- all records on the stream are accepted).
@@ -77,6 +101,8 @@ Return `true` to allow the component to re-render with this record, or `false` t
 
 ReactiveComponent.debug = Rails.env.development?
 ReactiveComponent.renderer = ApplicationController
+
+ReactiveComponent.presence_identity = ->(connection) { connection.current_user&.then { |u| { id: u.id, name: u.name } } }
 
 ReactiveComponent::Channel.compress = Rails.env.production?
 ReactiveComponent::Channel.filter_callback = ->(record, params) {
