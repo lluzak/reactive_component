@@ -1,5 +1,5 @@
 class ApplicationController < ActionController::Base
-  helper_method :current_contact, :viewer_id
+  helper_method :current_contact, :viewer, :viewer_id
 
   private
 
@@ -9,8 +9,19 @@ class ApplicationController < ActionController::Base
   end
 
   # Who is looking. The dummy app has no login, so `?as=<contact id>` stands in
-  # for one. It rides the URL, not a cookie, so two tabs can be two people.
+  # for one. It rides the URL rather than a cookie so that two tabs in one
+  # browser are two different people.
   def viewer_id
     params[:as].presence
+  end
+
+  def viewer
+    @viewer ||= Contact.find_by(id: viewer_id)
+  end
+
+  # Keeps the viewer across links within the app, so only the first visit needs
+  # to name one.
+  def default_url_options
+    viewer_id ? { as: viewer_id } : {}
   end
 end
