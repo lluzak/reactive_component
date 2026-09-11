@@ -1,5 +1,6 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import starlightLlmsTxt from 'starlight-llms-txt';
 
 export default defineConfig({
   site: 'https://lluzak.github.io',
@@ -7,6 +8,22 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'ReactiveComponent',
+      description: 'Reactive server-rendered components for Rails via ActionCable',
+      plugins: [
+        starlightLlmsTxt({
+          details:
+            'ReactiveComponent is a Ruby gem for Rails 7.1 through 8.x. It integrates ViewComponent, Turbo Streams, and ActionCable.',
+        }),
+      ],
+      head: [
+        {
+          tag: 'link',
+          attrs: {
+            rel: 'describedby',
+            href: '/reactive_component/llms.txt',
+          },
+        },
+      ],
       social: [
         {
           icon: 'github',
