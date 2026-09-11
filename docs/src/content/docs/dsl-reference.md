@@ -262,6 +262,48 @@ In debug mode the Stimulus controller logs a `console.error` naming any two comp
 
 ---
 
+## `presence(name)`
+
+Declares an instance variable the browser fills from its presence roster, so a template can render who else is here without the server knowing anything about it.
+
+```ruby
+class BoardComponent < ApplicationComponent
+  include ReactiveComponent
+
+  subscribes_to :board
+  presence :viewers
+end
+```
+
+```erb
+<% @viewers.each do |viewer| %>
+  <span class="avatar"><%= viewer.user.name %></span>
+<% end %>
+```
+
+Each entry is `{ user, state, lastSeen }` -- the same shape the `reactive-presence:changed` event carries. The element must be inside a `presence` controller; see [Presence](/reactive_component/presence/) for wiring it up.
+
+The server renders the collection empty, then the browser re-renders it through the normal morph path as the roster changes. No value is ever broadcast for it.
+
+### Only `.each` reads the field
+
+`.each` is the one way to read a presence field. `@viewers.size`, `@viewers.any?` or a bare `<% if @viewers %>` would be evaluated on the server, where the list is always empty, and shipped as a constant that never changes as people come and go. Each of those raises `CompileError` at boot rather than rendering something that quietly lies.
+
+### Only property reads inside the loop
+
+The items come from the browser, and the server never sees them, so it cannot evaluate anything per item. A loop that needs it fails at boot rather than rendering `undefined`:
+
+```erb
+<% @viewers.each do |viewer| %>
+  <%= viewer.user.name %>                          <%# fine %>
+  <%= Palette::COLORS.fetch(viewer.user.color) %>  <%# CompileError %>
+<% end %>
+```
+
+The second one mixes a server-side constant with the loop variable, which is exactly what the server would have to resolve one item at a time. Pass what you need through the identity lambda instead, so the value is already on the entry.
+
+Cursors deliberately do not go through this path. They are rendered into an overlay outside the wrapper, because 20 frames a second through a morph is the thing that overlay exists to avoid.
+
 ## `client_state(name, default: nil)`
 
 Declares a client-only state field managed in JavaScript. Client state is useful for ephemeral UI concerns like toggles, selections, or expanded/collapsed sections that do not need to be persisted on the server.

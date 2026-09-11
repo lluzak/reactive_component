@@ -15,6 +15,10 @@
 - `ReactiveComponent.signed_stream` mints the stream name a `presence`
   controller needs on a plain element.
 - `ReactiveComponent.presence_state_limit` caps client-authored presence state.
+- `presence :viewers` declares an ivar the browser fills from its roster, so a
+  template can render who else is here. The server renders it empty; only plain
+  property reads on the loop item compile, and anything needing per-item server
+  evaluation raises `CompileError` at boot.
 - Live cursors, opt-in on both ends. A sharer publishes to a stream named for
   them and a watcher subscribes to one person, so frames are never sent to
   anyone who did not ask. A sharer nobody watches does not sample the mouse at
