@@ -111,6 +111,82 @@ An entry expires **30 seconds** after that viewer was last heard from, and every
      data-presence-stream-value="...">
 ```
 
+## Live cursors
+
+A cursor is more presence state, on a stream of its own. Turn it on per element:
+
+```erb
+<div data-controller="presence"
+     data-presence-cursors-value="true"
+     data-presence-anchor="<%= dom_id(@board) %>"
+     data-presence-stream-value="<%= ReactiveComponent.signed_stream(@board, :collaborators) %>">
+```
+
+Then give people the two controls. Both are opt-in, and both are needed before a single frame moves:
+
+```erb
+<button data-action="presence#shareCursor">Share my cursor</button>
+
+<%# one per peer, rendered from the changed event %>
+<button data-action="presence#watch" data-presence-user-id-param="<%= peer.id %>">Follow</button>
+```
+
+### Routed, not filtered
+
+Each sharer publishes to a stream named for them, and you receive it only after asking:
+
+```
+<signed stream>:cursor:<user id>
+```
+
+Filtering in the browser would be no help at all: the frames would already have crossed the wire. Routing per user means they are never sent, so a sharer nobody follows costs one publish into an empty channel.
+
+Authorization needs no server-side roster. A cursor stream is a child of the stream the connection already verified, and a sharer can only ever publish to their own, so the worst a watcher can do is subscribe to somebody who never opted in and receive nothing.
+
+Watching is one person at a time.
+
+### Silence is the default
+
+A watch is announced like any other state, so a sharer can read off their own roster whether anybody is actually looking. If nobody is, the browser never installs a `mousemove` listener. Cursor traffic is exactly zero until two people both ask for it.
+
+### Coordinates are fractions, never pixels
+
+A frame carries a fraction of a named anchor:
+
+```json
+{ "a": "board_42", "x": 0.42, "y": 0.61 }
+```
+
+The receiver multiplies back through *its own* rect, so a different viewport width, a scroll offset or a reflowed sidebar still land the ghost on the element the sender was pointing at. Absolute pixels are right only when both windows happen to be the same size. A frame whose anchor is not on this page is skipped rather than guessed at.
+
+The anchor name is yours to choose; `dom_id(record)` is already unique and already in your markup.
+
+### Rendering
+
+Ghosts are `div.reactive-presence-cursor` inside a `div.reactive-presence-layer` the controller appends to your element. They live outside any reactive wrapper and move by `transform` alone, so 20 Hz never reaches a component's DOM and never goes through a morph. Style them yourself:
+
+```css
+.reactive-presence-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+
+.reactive-presence-cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transition: transform 85ms linear;
+  background: var(--presence-color);
+}
+
+.reactive-presence-cursor::after { content: attr(data-presence-user); }
+```
+
+Give the element itself `position: relative` so the layer has something to sit in.
+
+### What cursors cost
+
+Sampling is throttled to 20 Hz with a dead band, and the throttle *is* the batch: coalescing to the newest point beats shipping an array of them, because every older point is garbage the moment a newer one exists.
+
+Even so, 20 frames a second against the roster's one per ten seconds is three orders of magnitude more traffic per watcher. That is why cursors are off by default and why the routing exists. Before switching them on, multiply 20 by the number of watch relationships you expect, not by the number of viewers.
+
 ## What it costs
 
 Two limits worth knowing before you switch this on:
