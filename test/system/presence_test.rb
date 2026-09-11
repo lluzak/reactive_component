@@ -64,7 +64,7 @@ class PresenceTest < SystemTestCase
 
     using_session(:tom) { assert_selector ".viewer[data-viewer-id='#{@bob.id}']", wait: 10 }
 
-    using_session(:ana) { click_button 'Share cursor' }
+    using_session(:ana) { click_button 'Share my cursor' }
 
     using_session(:tom) do
       assert_selector ".viewer[data-viewer-id='#{@bob.id}'][data-sharing='true']", wait: 10
@@ -83,7 +83,7 @@ class PresenceTest < SystemTestCase
     open_message_as(:tom, @charlie)
 
     using_session(:tom) { assert_selector ".viewer[data-viewer-id='#{@bob.id}']", wait: 10 }
-    using_session(:ana) { click_button 'Share cursor' }
+    using_session(:ana) { click_button 'Share my cursor' }
 
     using_session(:tom) do
       find(".viewer[data-viewer-id='#{@bob.id}'][data-sharing='true']", wait: 10).click
