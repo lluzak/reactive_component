@@ -225,6 +225,24 @@ class ReactiveComponent::ChannelTest < ActionCable::Channel::TestCase
     end
   end
 
+  test 'announce tells this connection who it is, every time' do
+    alices, = alice_and_bob_messages
+
+    with_presence_identity(id: 7, name: 'Ana') do
+      subscribe_to_messages_of(alices.recipient)
+
+      perform :announce, 'state' => {}
+      perform :announce, 'state' => { 'field' => 'body' }
+
+      selves = transmissions.select { |t| t['action'] == 'presence_self' }
+
+      # A second controller joining the same subscription only hears this if it
+      # is not a one-off.
+      assert_equal 2, selves.size
+      assert_equal({ 'id' => 7, 'name' => 'Ana' }, selves.last['user'])
+    end
+  end
+
   # --- presence_leave ---
 
   test 'unsubscribing announces a leave for a viewer that had announced' do
