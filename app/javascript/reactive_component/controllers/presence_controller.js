@@ -74,10 +74,35 @@ export default class extends Controller {
     findSubscription(this.streamValue)?.perform("announce", { state: this.state })
   }
 
+  claim(event) {
+    this.state = { field: event.target.dataset.presenceField }
+    this.announce()
+  }
+
+  release() {
+    this.state = {}
+    this.announce()
+  }
+
+  // Attributes only: this never re-renders anything and never touches the morph
+  // path. What any of it looks like is the host app's CSS to decide.
   changed() {
+    const others = this.roster.others()
+
+    this.element.toggleAttribute("data-presence-here", others.length > 0)
+
+    for (const field of this.element.querySelectorAll("[data-presence-field]")) {
+      const names = others
+        .filter(entry => entry.state.field === field.dataset.presenceField)
+        .map(entry => entry.user.name)
+
+      if (names.length) field.setAttribute("data-presence-busy", names.join(", "))
+      else field.removeAttribute("data-presence-busy")
+    }
+
     this.element.dispatchEvent(new CustomEvent("reactive-presence:changed", {
       bubbles: true,
-      detail: { others: this.roster.others() }
+      detail: { others }
     }))
   }
 }
