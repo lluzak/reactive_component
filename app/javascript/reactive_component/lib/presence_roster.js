@@ -43,6 +43,12 @@ export class PresenceRoster {
   others() {
     return [...this.entries.values()].filter(entry => entry.user.id !== this.selfId)
   }
+
+  // A watch is announced like any other state, so the person being watched can
+  // read it straight off the roster. No watchers means no reason to sample.
+  watchedBy(userId) {
+    return this.others().some(entry => entry.state.watching === userId)
+  }
 }
 
 function sameState(a = {}, b = {}) {

@@ -78,6 +78,28 @@ class PresenceTest < SystemTestCase
     end
   end
 
+  test 'a watched cursor appears for the watcher and nobody else' do
+    open_message_as(:ana, @bob)
+    open_message_as(:tom, @charlie)
+
+    using_session(:tom) { assert_selector ".viewer[data-viewer-id='#{@bob.id}']", wait: 10 }
+    using_session(:ana) { click_button 'Share cursor' }
+
+    using_session(:tom) do
+      find(".viewer[data-viewer-id='#{@bob.id}'][data-sharing='true']", wait: 10).click
+    end
+
+    using_session(:ana) do
+      # Only now does Ana's browser start watching the mouse at all.
+      assert_selector ".viewer[data-watching='#{@bob.id}']", wait: 10
+      find('#reply_body').hover
+    end
+
+    using_session(:tom) do
+      assert_selector ".reactive-presence-cursor[data-presence-user='#{@bob.name}']", visible: :all, wait: 10
+    end
+  end
+
   test 'a viewer alone on the page is not in their own roster' do
     open_message_as(:ana, @bob)
 
