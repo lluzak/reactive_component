@@ -48,6 +48,46 @@
       }
 
       .viewer[data-following="true"] { box-shadow: 0 0 0 2px #fff; }
+
+      /* Following somebody should be obvious, not a 2px ring you have to hunt. */
+      .following-pill {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 2px 4px 2px 2px; border-radius: 999px;
+        background: rgba(255,255,255,.12); color: #fff; font-size: 11px;
+      }
+
+      .following-pill .avatar {
+        width: 18px; height: 18px; border-radius: 50%;
+        display: grid; place-items: center;
+        background: var(--avatar-color, #64748b);
+        font-size: 8px; font-weight: 700;
+      }
+
+      .following-pill button {
+        border: 0; border-radius: 999px; padding: 1px 7px;
+        background: rgba(255,255,255,.18); color: #fff;
+        font-size: 10px; cursor: pointer;
+      }
+
+      .following-pill button:hover { background: rgba(255,255,255,.3); }
+
+      /* A card somebody else has picked up. The gem stamps the attribute; this
+         is the whole of what makes it visible. */
+      .card-shell[data-presence-busy] { position: relative; cursor: not-allowed; }
+
+      .card-shell[data-presence-busy] > div {
+        outline: 2px solid #f59e0b;
+        outline-offset: 1px;
+        opacity: .65;
+      }
+
+      .card-shell[data-presence-busy]::after {
+        content: attr(data-presence-busy) " is moving this";
+        position: absolute; left: 0; top: -9px;
+        padding: 0 5px; border-radius: 3px;
+        background: #f59e0b; color: #422006;
+        font-size: 9px; font-weight: 600; line-height: 1.6; white-space: nowrap;
+      }
     </style>
     <%# The viewer rides the socket URL so each tab connects as itself. %>
     <meta name="action-cable-url" content="<%= "/cable?as=#{viewer_id}" %>">
@@ -141,6 +181,50 @@
 
       return chip
     }))
+
+    const followingEntry = event.detail.others.find((entry) => entry.user.id === following)
+    const followingSlot = document.getElementById("following_status")
+
+    if (followingSlot) {
+      followingSlot.replaceChildren()
+      if (followingEntry) {
+        const pill = document.createElement("span")
+        pill.className = "following-pill"
+        pill.style.setProperty("--avatar-color", followingEntry.user.color || "#64748b")
+
+        const avatar = document.createElement("span")
+        avatar.className = "avatar"
+        avatar.textContent = followingEntry.user.initials || followingEntry.user.name.slice(0, 2).toUpperCase()
+
+        const label = document.createElement("span")
+        label.textContent = `following ${followingEntry.user.name}`
+
+        const stop = document.createElement("button")
+        stop.type = "button"
+        stop.textContent = "stop"
+        stop.dataset.action = "presence#watch"
+        stop.dataset.presenceUserIdParam = followingEntry.user.id
+
+        pill.append(avatar, label, stop)
+        followingSlot.append(pill)
+      }
+    }
+
+    // The other direction: somebody is watching your cursor.
+    const selfId = window.Stimulus
+      ? window.Stimulus.getControllerForElementAndIdentifier(presence, "presence")?.roster?.selfId
+      : null
+    const watchers = event.detail.others.filter((entry) => entry.state.watching === selfId)
+    const followersSlot = document.getElementById("followers_status")
+
+    if (followersSlot) {
+      followersSlot.textContent = watchers.length
+        ? `${watchers.map((entry) => entry.user.name).join(", ")} ${watchers.length === 1 ? "is" : "are"} following your cursor`
+        : ""
+    }
+
+    const hint = document.getElementById("cursor_hint")
+    if (hint) hint.hidden = !!followingEntry
   })
 
   // Nothing leaves this browser until somebody follows you, so say so rather

@@ -26,18 +26,26 @@ class BoardTest < SystemTestCase
 
     # A real dragstart is hard to hold open across sessions, so claim the card
     # the way the drag action does and leave it claimed.
-    using_session(:ana) do
-      page.execute_script(<<~JS, card_id(@message1))
-        const shell = document.querySelector(`[data-card-id="${arguments[0]}"]`)
-        const controller = window.Stimulus.getControllerForElementAndIdentifier(
-          shell.closest('[data-controller~="presence"]'), "presence")
-        controller.claim({ target: shell })
-      JS
-    end
+    using_session(:ana) { claim_card(@message1) }
 
     using_session(:tom) do
       assert_selector "[data-card-id='#{card_id(@message1)}'][data-presence-busy='#{@bob.name}']", wait: 10
     end
+  end
+
+  test 'a card someone else is holding cannot be dragged away' do
+    open_board_as(:ana, @bob)
+    open_board_as(:tom, @charlie)
+
+    using_session(:tom) { assert_selector '[data-presence-here]', wait: 10 }
+    using_session(:ana) { claim_card(@message1) }
+
+    using_session(:tom) do
+      assert_selector "[data-card-id='#{card_id(@message1)}'][data-presence-busy]", wait: 10
+      drag_card_to(@message1, 'trash')
+    end
+
+    assert_equal 'inbox', @message1.reload.label
   end
 
   test 'the board renders every column' do
@@ -52,6 +60,16 @@ class BoardTest < SystemTestCase
   end
 
   private
+
+  # What `dragstart->presence#claim` does, without holding a drag open.
+  def claim_card(message)
+    page.execute_script(<<~JS, card_id(message))
+      const shell = document.querySelector(`[data-card-id="${arguments[0]}"]`)
+      const controller = window.Stimulus.getControllerForElementAndIdentifier(
+        shell.closest('[data-controller~="presence"]'), "presence")
+      controller.claim({ target: shell })
+    JS
+  end
 
   def card_id(message)
     ActionView::RecordIdentifier.dom_id(message, :card)
@@ -75,7 +93,7 @@ class BoardTest < SystemTestCase
       const board = window.Stimulus.getControllerForElementAndIdentifier(
         shell.closest('[data-controller~="board"]'), "board")
 
-      board.pick({ currentTarget: shell, dataTransfer: { effectAllowed: "", setData() {} } })
+      board.pick({ currentTarget: shell, preventDefault() {}, dataTransfer: { effectAllowed: "", setData() {} } })
       board.drop({
         preventDefault() {},
         currentTarget: column,
