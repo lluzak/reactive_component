@@ -5,6 +5,13 @@ import { Controller } from "@hotwired/stimulus"
 // through the broadcast the gem already sends.
 export default class extends Controller {
   pick(event) {
+    // Presence prevents the collision rather than resolving it: a card somebody
+    // else has hold of simply will not start a drag here.
+    if (event.currentTarget.hasAttribute("data-presence-busy")) {
+      event.preventDefault()
+      return
+    }
+
     this.draggingId = event.currentTarget.dataset.cardId
     event.dataTransfer.effectAllowed = "move"
     event.dataTransfer.setData("text/plain", this.draggingId)
