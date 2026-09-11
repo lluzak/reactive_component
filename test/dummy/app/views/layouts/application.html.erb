@@ -28,24 +28,26 @@
         color: #fff; font-size: 10px; line-height: 1.5; white-space: nowrap;
       }
 
+      /* Initials only. The name is in the title, and a lineup of circles reads
+         faster than a row of labels once more than two people are here. */
       .viewer {
-        display: inline-flex; align-items: center; gap: 6px;
-        padding: 2px 8px 2px 2px; border-radius: 999px;
-        background: rgba(255,255,255,.08); color: #e5e7eb;
-        font-size: 12px; line-height: 1.6; cursor: default;
-      }
-
-      .viewer .avatar {
-        width: 20px; height: 20px; border-radius: 50%;
-        display: grid; place-items: center;
+        position: relative;
+        width: 26px; height: 26px; padding: 0; border: 0;
+        border-radius: 50%; display: grid; place-items: center;
         background: var(--avatar-color, #64748b);
-        color: #fff; font-size: 9px; font-weight: 700; letter-spacing: .02em;
+        color: #fff; font-size: 9.5px; font-weight: 700; letter-spacing: .02em;
+        cursor: default;
       }
 
+      /* A green dot means that person is broadcasting a cursor you can follow. */
       .viewer[data-sharing="true"] { cursor: pointer; }
-      .viewer[data-sharing="true"]:hover { background: rgba(255,255,255,.18); }
-      .viewer[data-following="true"] { outline: 1.5px solid var(--avatar-color, #64748b); background: transparent; }
-      .viewer .hint { font-size: 10px; opacity: .65; }
+      .viewer[data-sharing="true"]::after {
+        content: ""; position: absolute; right: -1px; bottom: -1px;
+        width: 8px; height: 8px; border-radius: 50%;
+        background: #22c55e; box-shadow: 0 0 0 2px #111827;
+      }
+
+      .viewer[data-following="true"] { box-shadow: 0 0 0 2px #fff; }
     </style>
     <%# The viewer rides the socket URL so each tab connects as itself. %>
     <meta name="action-cable-url" content="<%= "/cable?as=#{viewer_id}" %>">
@@ -125,26 +127,16 @@
       chip.dataset.following = String(isFollowed)
       chip.dataset.watching = entry.state.watching == null ? "" : String(entry.state.watching)
       chip.style.setProperty("--avatar-color", entry.user.color || "#64748b")
-      chip.title = entry.user.name
+      chip.textContent = entry.user.initials || entry.user.name.slice(0, 2).toUpperCase()
 
-      const avatar = document.createElement("span")
-      avatar.className = "avatar"
-      avatar.textContent = entry.user.initials || entry.user.name.slice(0, 2).toUpperCase()
-
-      const name = document.createElement("span")
-      name.textContent = entry.user.name
-
-      chip.append(avatar, name)
+      chip.title = sharing
+        ? `${entry.user.name} — ${isFollowed ? "following their cursor" : "click to follow their cursor"}`
+        : entry.user.name
 
       if (sharing) {
         chip.type = "button"
         chip.dataset.action = "presence#watch"
         chip.dataset.presenceUserIdParam = entry.user.id
-
-        const hint = document.createElement("span")
-        hint.className = "hint"
-        hint.textContent = isFollowed ? "following" : "follow"
-        chip.append(hint)
       }
 
       return chip

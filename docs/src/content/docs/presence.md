@@ -103,7 +103,9 @@ The cap is the real protection. State also passes through `sanitize_for_broadcas
 
 Each browser keeps its own roster in memory. There is no Redis set, no table, and no sweeper job -- ActionCable's existing fan-out already crosses app servers.
 
-An entry expires **30 seconds** after that viewer was last heard from, and every viewer announces every **10 seconds**. A `presence_leave` on disconnect is a fast path, not the mechanism: a killed tab, a closed laptop and a dead cable worker never run the unsubscribe callback, and all three resolve the same way, by expiry.
+An entry expires **90 seconds** after that viewer was last heard from, and every viewer announces every **10 seconds**. A `presence_leave` on disconnect is a fast path, not the mechanism: a killed tab, a closed laptop and a dead cable worker never run the unsubscribe callback, and all three resolve the same way, by expiry.
+
+The gap between those two numbers is deliberate. Browsers throttle timers in a hidden tab to roughly once a minute, so a backgrounded viewer's heartbeat can be a minute late even though their connection is perfectly healthy. An expiry near the heartbeat interval would drop anyone who switches tabs, taking their cursor with them. A returning tab also announces immediately on `visibilitychange`, so it reappears without waiting out a beat.
 
 ```erb
 <div data-controller="presence"

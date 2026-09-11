@@ -105,12 +105,12 @@ class PresenceTest < SystemTestCase
     open_message_as(:tom, @charlie)
 
     using_session(:tom) do
-      assert_selector '.detail-viewer', text: @bob.name, wait: 10
+      assert_selector '.detail-viewer', text: @bob.initials, wait: 10
     end
 
     using_session(:ana) do
-      assert_selector '.detail-viewer', text: @charlie.name, wait: 10
-      assert_no_selector '.detail-viewer', text: @bob.name
+      assert_selector '.detail-viewer', text: @charlie.initials, wait: 10
+      assert_no_selector '.detail-viewer', text: @bob.initials
     end
   end
 

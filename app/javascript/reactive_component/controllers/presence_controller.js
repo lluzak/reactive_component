@@ -6,10 +6,17 @@ import { toAnchorPoint, fromAnchorPoint, findAnchor, coalesce } from "reactive_c
 const HEARTBEAT = 10000
 const SWEEP = 1000
 
+// Browsers throttle timers in a hidden tab to roughly once a minute, so a
+// heartbeat from a backgrounded viewer can be a minute late. The expiry has to
+// sit well clear of that, or switching tabs drops you out of everyone's roster
+// and takes your cursor with you. A clean disconnect still broadcasts a leave,
+// so this only governs the crashed-tab case.
+const TTL = 90000
+
 export default class extends Controller {
   static values = {
     stream: String,
-    ttl: { type: Number, default: 30000 },
+    ttl: { type: Number, default: TTL },
     cursors: { type: Boolean, default: false }
   }
 
@@ -32,6 +39,11 @@ export default class extends Controller {
     this.beat = setInterval(() => this.announce(), HEARTBEAT)
     this.sweep = setInterval(() => this.expire(), SWEEP)
 
+    // A tab coming back to the foreground has been quiet for as long as the
+    // browser throttled it. Announce at once rather than waiting out a beat.
+    this.onVisible = () => { if (!document.hidden) this.announce() }
+    document.addEventListener("visibilitychange", this.onVisible)
+
     // A component that mounts later asks for the roster as it stands.
     this.onRequest = () => this.changed()
     this.element.addEventListener("reactive-presence:request", this.onRequest)
@@ -40,6 +52,7 @@ export default class extends Controller {
   disconnect() {
     clearInterval(this.beat)
     clearInterval(this.sweep)
+    document.removeEventListener("visibilitychange", this.onVisible)
     this.element.removeEventListener("reactive-presence:request", this.onRequest)
     this.stopSampling()
     if (this.hasStreamValue) unsubscribe(this.streamValue, this)
