@@ -1,6 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 import { subscribe, unsubscribe, findSubscription } from "reactive_component/lib/cable_subscriptions"
 import { PresenceRoster } from "reactive_component/lib/presence_roster"
+import { toAnchorPoint, fromAnchorPoint, findAnchor, coalesce } from "reactive_component/lib/presence_cursors"
 
 const HEARTBEAT = 10000
 const SWEEP = 1000
@@ -8,7 +9,8 @@ const SWEEP = 1000
 export default class extends Controller {
   static values = {
     stream: String,
-    ttl: { type: Number, default: 30000 }
+    ttl: { type: Number, default: 30000 },
+    cursors: { type: Boolean, default: false }
   }
 
   connect() {
@@ -18,6 +20,8 @@ export default class extends Controller {
     this.state = {}
     this.sharing = false
     this.watching = null
+    this.ghosts = new Map()
+    this.queued = new Map()
 
     subscribe(this.streamValue, this)
 
@@ -26,12 +30,13 @@ export default class extends Controller {
     // Announce traffic is O(n^2) per stream; past roughly 50 concurrent
     // viewers this wants a Redis-backed roster on the server.
     this.beat = setInterval(() => this.announce(), HEARTBEAT)
-    this.sweep = setInterval(() => { if (this.roster.expire()) this.changed() }, SWEEP)
+    this.sweep = setInterval(() => this.expire(), SWEEP)
   }
 
   disconnect() {
     clearInterval(this.beat)
     clearInterval(this.sweep)
+    this.stopSampling()
     if (this.hasStreamValue) unsubscribe(this.streamValue, this)
   }
 
@@ -65,11 +70,28 @@ export default class extends Controller {
           this.announce()
           break
         }
+        this.paintCursor(message.user, null)
         if (this.roster.remove(message.user.id)) this.changed()
+        break
+
+      case "cursor":
+        this.queueCursor(message.user, message.cursor)
         break
     }
     // Anything else on this stream belongs to the renderer, whose routeMessage
     // already returns "ignore" for actions it does not know.
+  }
+
+  // A viewer who went silent takes their cursor with them. Expiry is the
+  // crashed-tab case, where no leave and no final null frame will ever come, so
+  // nothing else would clear it.
+  expire() {
+    if (!this.roster.expire()) return
+
+    for (const id of [...this.ghosts.keys()]) {
+      if (!this.roster.entries.has(id)) this.paintCursor({ id }, null)
+    }
+    this.changed()
   }
 
   announce() {
@@ -137,5 +159,86 @@ export default class extends Controller {
       bubbles: true,
       detail: { others }
     }))
+
+    this.syncSampling()
+  }
+
+  // Two gates before a mousemove is even measured: this viewer opted in, and
+  // somebody actually asked to watch them. Nobody watching means no listener.
+  syncSampling() {
+    const wanted = this.cursorsValue && this.sharing && this.roster.watchedBy(this.roster.selfId)
+    if (wanted === !!this.sampler) return
+
+    wanted ? this.startSampling() : this.stopSampling()
+  }
+
+  startSampling() {
+    const anchor = this.element.querySelector("[data-presence-anchor]") || this.element
+    const send = coalesce(point =>
+      findSubscription(this.streamValue)?.perform("cursor", { cursor: point }))
+
+    this.sampler = (event) => {
+      const point = toAnchorPoint(event, anchor)
+      if (point) send(point)
+    }
+
+    this.element.addEventListener("mousemove", this.sampler)
+  }
+
+  stopSampling() {
+    if (!this.sampler) return
+
+    this.element.removeEventListener("mousemove", this.sampler)
+    this.sampler = null
+    findSubscription(this.streamValue)?.perform("cursor", { cursor: null })
+  }
+
+  // Watching several people means several frames a tick. Paint once.
+  queueCursor(user, point) {
+    this.queued.set(user.id, { user, point })
+    if (this.frame) return
+
+    this.frame = requestAnimationFrame(() => {
+      this.frame = null
+      for (const entry of this.queued.values()) this.paintCursor(entry.user, entry.point)
+      this.queued.clear()
+    })
+  }
+
+  // Ghosts live in an overlay outside any reactive wrapper and move by
+  // transform alone, so 20 Hz never reaches a component's DOM.
+  paintCursor(user, point) {
+    let ghost = this.ghosts.get(user.id)
+
+    if (!point) {
+      ghost?.remove()
+      this.ghosts.delete(user.id)
+      return
+    }
+
+    if (!ghost) {
+      ghost = document.createElement("div")
+      ghost.className = "reactive-presence-cursor"
+      ghost.dataset.presenceUser = user.name
+      if (user.color) ghost.style.setProperty("--presence-color", user.color)
+      this.layer().append(ghost)
+      this.ghosts.set(user.id, ghost)
+    }
+
+    const anchor = findAnchor(this.element, point.a)
+    if (!anchor) return
+
+    const at = fromAnchorPoint(point, anchor, this.layer())
+    ghost.style.transform = `translate3d(${at.x}px, ${at.y}px, 0)`
+  }
+
+  layer() {
+    if (this.cursorLayer?.isConnected) return this.cursorLayer
+
+    this.cursorLayer = document.createElement("div")
+    this.cursorLayer.className = "reactive-presence-layer"
+    this.element.append(this.cursorLayer)
+
+    return this.cursorLayer
   }
 }

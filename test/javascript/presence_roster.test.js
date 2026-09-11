@@ -101,3 +101,29 @@ describe("others", () => {
     expect(roster.others().map(entry => entry.user.id)).toEqual([tom.id])
   })
 })
+
+describe("watchedBy", () => {
+  it("is false when nobody named this viewer", () => {
+    const roster = new PresenceRoster()
+    roster.selfId = ana.id
+    roster.apply(tom, { watching: null })
+
+    expect(roster.watchedBy(ana.id)).toBe(false)
+  })
+
+  it("is true once somebody names this viewer", () => {
+    const roster = new PresenceRoster()
+    roster.selfId = ana.id
+    roster.apply(tom, { watching: ana.id })
+
+    expect(roster.watchedBy(ana.id)).toBe(true)
+  })
+
+  it("ignores this viewer watching themselves", () => {
+    const roster = new PresenceRoster()
+    roster.selfId = ana.id
+    roster.apply(ana, { watching: ana.id })
+
+    expect(roster.watchedBy(ana.id)).toBe(false)
+  })
+})
