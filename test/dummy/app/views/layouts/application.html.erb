@@ -43,5 +43,26 @@
   </head>
   <body class="h-full">
     <%= yield %>
+  <%# Host-app rendering of the roster. The gem stamps attributes and dispatches
+    this event; what the roster looks like is the app's decision. %>
+<script>
+  document.addEventListener("reactive-presence:changed", (event) => {
+    const list = document.getElementById("viewers")
+    if (!list) return
+
+    list.replaceChildren(...event.detail.others.map((entry) => {
+      const chip = document.createElement("button")
+      chip.type = "button"
+      chip.className = "viewer text-xs px-2 py-1 rounded bg-gray-100"
+      chip.textContent = entry.user.name
+      chip.dataset.viewerId = entry.user.id
+      chip.dataset.sharing = String(entry.state.sharing === true)
+      chip.dataset.watching = entry.state.watching == null ? "" : String(entry.state.watching)
+      chip.dataset.action = "presence#watch"
+      chip.dataset.presenceUserIdParam = entry.user.id
+      return chip
+    }))
+  })
+</script>
   </body>
 </html>
