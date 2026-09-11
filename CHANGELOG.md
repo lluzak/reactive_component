@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.1] - 2026-09-11
+
+### Added
+- The documentation site now publishes `llms.txt`, `llms-small.txt`, and
+  `llms-full.txt` files generated from the current documentation for LLM tools.
+  Every documentation page advertises the entrypoint with a standard
+  `rel="describedby"` link.
+
 ## [0.8.0] - 2026-09-10
 
 ### Added
