@@ -13,11 +13,12 @@
     <button type="button" id="share_cursor"
             class="rounded border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-white"
             data-action="presence#shareCursor">Share my cursor</button>
-    <span class="text-xs text-gray-400" id="cursor_hint">
-      a green dot means that person is sharing &mdash; click their avatar to follow their cursor
-    </span>
     <span id="following_status"></span>
-    <span id="followers_status" class="text-xs text-gray-400"></span>
+    <span class="legend" id="cursor_hint" hidden>
+      <span><b>&#9679;</b> sharing, click to follow</span>
+      <span><b>&#9678;</b> following you</span>
+      <span><b>&#9711;</b> you are following</span>
+    </span>
   </div>
 
   <div class="grid grid-cols-3 gap-4">

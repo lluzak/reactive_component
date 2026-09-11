@@ -62,7 +62,23 @@ export default class extends Controller {
     if (!label) return
 
     const cards = this.element.querySelector(`[data-column="${label}"] [data-cards]`)
-    if (cards && shell.parentElement !== cards) cards.append(shell)
+    if (!cards || shell.parentElement === cards) return
+
+    // Measure, move, then play the gap back as a transform, so somebody else's
+    // move reads as the card travelling rather than teleporting between columns.
+    const from = shell.getBoundingClientRect()
+    cards.append(shell)
+    const to = shell.getBoundingClientRect()
+
+    const dx = from.left - to.left
+    const dy = from.top - to.top
+    if ((!dx && !dy) || matchMedia("(prefers-reduced-motion: reduce)").matches) return
+
+    shell.animate(
+      [{ transform: `translate(${dx}px, ${dy}px)`, boxShadow: "0 8px 20px -6px rgba(0,0,0,.45)" },
+       { transform: "none", boxShadow: "none" }],
+      { duration: 280, easing: "cubic-bezier(.2,.7,.3,1)" }
+    )
   }
 
   clearHints() {
