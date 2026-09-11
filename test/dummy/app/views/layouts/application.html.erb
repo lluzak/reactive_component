@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
-    <%= action_cable_meta_tag %>
+    <%# The viewer rides the socket URL so each tab connects as itself. %>
+    <meta name="action-cable-url" content="<%= "/cable?as=#{viewer_id}" %>">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
