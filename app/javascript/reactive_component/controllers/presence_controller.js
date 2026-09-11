@@ -31,11 +31,16 @@ export default class extends Controller {
     // viewers this wants a Redis-backed roster on the server.
     this.beat = setInterval(() => this.announce(), HEARTBEAT)
     this.sweep = setInterval(() => this.expire(), SWEEP)
+
+    // A component that mounts later asks for the roster as it stands.
+    this.onRequest = () => this.changed()
+    this.element.addEventListener("reactive-presence:request", this.onRequest)
   }
 
   disconnect() {
     clearInterval(this.beat)
     clearInterval(this.sweep)
+    this.element.removeEventListener("reactive-presence:request", this.onRequest)
     this.stopSampling()
     if (this.hasStreamValue) unsubscribe(this.streamValue, this)
   }

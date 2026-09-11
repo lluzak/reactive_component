@@ -5,16 +5,16 @@
   <%# Message detail %>
   <div class="flex-1 overflow-y-auto scrollbar-thin bg-gray-50">
     <%= turbo_frame_tag "message_detail", class: "block h-full" do %>
-      <div class="h-full flex flex-col">
+      <div class="h-full flex flex-col"
+           data-controller="presence"
+           data-presence-cursors-value="true"
+           data-presence-anchor="reply_box"
+           data-presence-stream-value="<%= ReactiveComponent.signed_stream(current_contact, :messages) %>">
         <div class="flex-1 overflow-y-auto">
           <%= render MessageSummaryComponent.new(summary: MessageSummary.new(message: @message)) %>
           <%= render MessageDetailComponent.new(message: @message) %>
         </div>
-        <div class="border-t border-gray-200 bg-white px-6 py-4"
-             data-controller="presence"
-             data-presence-cursors-value="true"
-             data-presence-anchor="reply_box"
-             data-presence-stream-value="<%= ReactiveComponent.signed_stream(current_contact, :messages) %>">
+        <div class="border-t border-gray-200 bg-white px-6 py-4">
           <div id="viewers" class="flex gap-2 mb-2"></div>
           <button type="button" id="share_cursor" class="text-xs text-gray-500 mb-2"
                   data-action="presence#shareCursor">Share cursor</button>

@@ -5,6 +5,7 @@ class MessageDetailComponent < ApplicationComponent
 
   subscribes_to :message
   broadcasts stream: ->(message) { [message.recipient, :messages] }
+  presence :viewers
 
   def self.dom_id_prefix = :detail
 
