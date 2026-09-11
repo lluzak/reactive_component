@@ -60,7 +60,42 @@ module ReactiveComponent
       broadcast_presence('presence', state: state)
     end
 
+    # Cursors move far too fast for the roster stream. A sharer publishes to a
+    # stream named for them, and you receive it only after asking to, so a
+    # stream nobody watches costs one publish into an empty channel. Filtering
+    # in the browser would be no help: the frames would already have arrived.
+    def cursor(data)
+      return unless @stream_name && presence_identity
+
+      point = ReactiveComponent.sanitize_for_broadcast(data['cursor'], source: 'cursor')
+
+      ActionCable.server.broadcast(
+        cursor_stream(presence_identity['id']),
+        { 'action' => 'cursor', 'user' => presence_identity, 'cursor' => point }
+      )
+    end
+
+    def watch_cursor(data)
+      return unless @stream_name
+
+      stream_from cursor_stream(data['user_id'])
+    end
+
+    def unwatch_cursor(data)
+      return unless @stream_name
+
+      stop_stream_from cursor_stream(data['user_id'])
+    end
+
     private
+
+    # A child of the stream this connection already verified, so watching one
+    # needs no server-side roster to authorize. A publisher can only ever write
+    # to its own; a watcher names someone else's and, if that person never
+    # opted in, receives nothing.
+    def cursor_stream(user_id)
+      "#{@stream_name}:cursor:#{user_id.to_s.first(64)}"
+    end
 
     def broadcast_presence(action, state: nil)
       payload = { 'action' => action, 'user' => presence_identity }

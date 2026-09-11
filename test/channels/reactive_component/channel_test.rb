@@ -243,6 +243,73 @@ class ReactiveComponent::ChannelTest < ActionCable::Channel::TestCase
     end
   end
 
+  # --- cursors ---
+
+  test 'a cursor goes to the stream named for its sharer, not the roster stream' do
+    alices, = alice_and_bob_messages
+
+    with_presence_identity(id: 7, name: 'Ana') do
+      subscribe_to_messages_of(alices.recipient)
+      roster = stream_name_for(alices.recipient)
+
+      assert_broadcasts("#{roster}:cursor:7", 1) do
+        assert_broadcasts(roster, 0) do
+          perform :cursor, 'cursor' => { 'a' => 'board_1', 'x' => 0.4, 'y' => 0.6 }
+        end
+      end
+
+      frame = ActiveSupport::JSON.decode(broadcasts("#{roster}:cursor:7").last)
+
+      assert_equal 'cursor', frame['action']
+      assert_equal({ 'a' => 'board_1', 'x' => 0.4, 'y' => 0.6 }, frame['cursor'])
+    end
+  end
+
+  test 'a cursor is published under the connection identity, not the payload' do
+    alices, = alice_and_bob_messages
+
+    with_presence_identity(id: 7, name: 'Ana') do
+      subscribe_to_messages_of(alices.recipient)
+      perform :cursor, 'cursor' => { 'x' => 0.1, 'y' => 0.2 }, 'user' => { 'id' => 99, 'name' => 'Tom' }
+
+      frame = ActiveSupport::JSON.decode(broadcasts("#{stream_name_for(alices.recipient)}:cursor:7").last)
+
+      assert_equal({ 'id' => 7, 'name' => 'Ana' }, frame['user'])
+    end
+  end
+
+  test 'watching subscribes to one sharer and unwatching stops' do
+    alices, = alice_and_bob_messages
+
+    with_presence_identity(id: 7) do
+      subscribe_to_messages_of(alices.recipient)
+      cursor_stream = "#{stream_name_for(alices.recipient)}:cursor:12"
+
+      perform :watch_cursor, 'user_id' => 12
+
+      # subscription.streams rather than assert_has_no_stream, which Rails 7.1
+      # does not have.
+      assert_includes subscription.streams, cursor_stream
+
+      perform :unwatch_cursor, 'user_id' => 12
+
+      assert_not_includes subscription.streams, cursor_stream
+    end
+  end
+
+  test 'a watched stream name cannot be grown without bound by the client' do
+    alices, = alice_and_bob_messages
+
+    with_presence_identity(id: 7) do
+      subscribe_to_messages_of(alices.recipient)
+      perform :watch_cursor, 'user_id' => 'x' * 500
+
+      watched = subscription.streams.find { |name| name.include?(':cursor:') }
+
+      assert_equal "#{stream_name_for(alices.recipient)}:cursor:#{'x' * 64}", watched
+    end
+  end
+
   # --- presence_leave ---
 
   test 'unsubscribing announces a leave for a viewer that had announced' do
