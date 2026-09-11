@@ -81,6 +81,39 @@ export default class extends Controller {
     )
   }
 
+  // Somebody you follow is dragging: carry a copy of their card along with
+  // their cursor, so you watch the move happen rather than only its result.
+  trackDrag(event) {
+    const { user, at, layer } = event.detail
+    this.previews ||= new Map()
+
+    const held = at && this.heldBy(user.name)
+    let preview = this.previews.get(user.id)
+
+    if (!held) {
+      preview?.remove()
+      this.previews.delete(user.id)
+      return
+    }
+
+    if (!preview) {
+      // The card body, not the shell: the shell also holds the compiled
+      // template script the gem emits alongside the component.
+      preview = held.querySelector("[data-label]").cloneNode(true)
+      preview.className = "drag-preview " + preview.className
+      preview.style.width = `${held.getBoundingClientRect().width}px`
+      layer.append(preview)
+      this.previews.set(user.id, preview)
+    }
+
+    preview.style.transform = `translate3d(${at.x + 12}px, ${at.y + 12}px, 0)`
+  }
+
+  heldBy(name) {
+    return [...this.element.querySelectorAll(".card-shell[data-presence-busy]")]
+      .find(shell => shell.getAttribute("data-presence-busy").split(", ").includes(name))
+  }
+
   clearHints() {
     for (const column of this.element.querySelectorAll("[data-column]")) {
       column.classList.remove("ring-2", "ring-blue-400")
