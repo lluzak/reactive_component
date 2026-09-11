@@ -43,6 +43,20 @@
     <%= javascript_importmap_tags %>
   </head>
   <body class="h-full">
+    <%# No login here: pick who you are. It is a query parameter rather than a
+        cookie so a second tab can be a second person. %>
+    <div class="flex items-center gap-3 bg-gray-900 px-4 py-1.5 text-xs text-gray-400">
+      <span class="uppercase tracking-wide">Viewing as</span>
+      <% Contact.order(:id).each do |contact| %>
+        <a href="<%= "#{request.path}?as=#{contact.id}" %>"
+           class="<%= viewer_id.to_s == contact.id.to_s ? "text-white font-semibold" : "hover:text-gray-200" %>"
+           data-viewer-pick="<%= contact.id %>"><%= contact.name %></a>
+      <% end %>
+      <% if viewer.blank? %>
+        <span class="text-amber-400">nobody yet — presence stays off until you pick someone</span>
+      <% end %>
+    </div>
+
     <%= yield %>
   <%# Host-app rendering of the roster. The gem stamps attributes and dispatches
     this event; what the roster looks like is the app's decision. %>
