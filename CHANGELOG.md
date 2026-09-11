@@ -18,6 +18,9 @@
   template can render who else is here. The server renders it empty; only plain
   property reads on the loop item compile, and anything needing per-item server
   evaluation raises `CompileError` at boot.
+- A `reactive-presence:cursor` event carries each painted cursor position in
+  the page's own coordinates, so an app can hang a drag preview or a viewport
+  follow off somebody else's pointer.
 - Live cursors, opt-in on both ends. A sharer publishes to a stream named for
   them and a watcher subscribes to one person, so frames are never sent to
   anyone who did not ask. A sharer nobody watches does not sample the mouse at

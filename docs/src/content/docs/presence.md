@@ -183,6 +183,19 @@ Ghosts are `div.reactive-presence-cursor` inside a `div.reactive-presence-layer`
 
 Give the element itself `position: relative` so the layer has something to sit in.
 
+For anything that should travel with somebody's pointer -- a drag preview, a follow-the-leader viewport -- listen for the cursor event rather than repeating the anchor arithmetic:
+
+```js
+element.addEventListener("reactive-presence:cursor", (event) => {
+  const { user, at, layer } = event.detail
+
+  if (!at) return removePreviewFor(user)   // they stopped, or let go
+  movePreviewFor(user, at.x, at.y, layer)  // pixels inside the cursor layer
+})
+```
+
+`at` is already resolved into this page's own coordinates, so a card dragged in one browser can be drawn under the right pointer in another whatever the window size.
+
 ### What cursors cost
 
 Sampling is throttled to 20 Hz with a dead band, and the throttle *is* the batch: coalescing to the newest point beats shipping an array of them, because every older point is garbage the moment a newer one exists.

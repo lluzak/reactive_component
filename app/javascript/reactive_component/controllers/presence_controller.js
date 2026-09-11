@@ -231,6 +231,7 @@ export default class extends Controller {
     if (!point) {
       ghost?.remove()
       this.ghosts.delete(user.id)
+      this.announceCursor(user, null, null)
       return
     }
 
@@ -248,6 +249,17 @@ export default class extends Controller {
 
     const at = fromAnchorPoint(point, anchor, this.layer())
     ghost.style.transform = `translate3d(${at.x}px, ${at.y}px, 0)`
+    this.announceCursor(user, point, at)
+  }
+
+  // Where somebody else's pointer is, in this page's own coordinates. Enough
+  // for an app to hang something off it — a drag preview, a viewport follow —
+  // without repeating the anchor arithmetic.
+  announceCursor(user, point, at) {
+    this.element.dispatchEvent(new CustomEvent("reactive-presence:cursor", {
+      bubbles: true,
+      detail: { user, point, at, layer: this.layer() }
+    }))
   }
 
   layer() {
