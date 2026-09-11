@@ -48,7 +48,9 @@
     <div class="flex items-center gap-3 bg-gray-900 px-4 py-1.5 text-xs text-gray-400">
       <span class="uppercase tracking-wide">Viewing as</span>
       <% Contact.order(:id).each do |contact| %>
-        <a href="<%= "#{request.path}?as=#{contact.id}" %>"
+        <%# A full page load, not a Turbo visit: the cable consumer is built once
+            from the meta tag below, so swapping identity has to rebuild it. %>
+        <a href="<%= "#{request.path}?as=#{contact.id}" %>" data-turbo="false"
            class="<%= viewer_id.to_s == contact.id.to_s ? "text-white font-semibold" : "hover:text-gray-200" %>"
            data-viewer-pick="<%= contact.id %>"><%= contact.name %></a>
       <% end %>
