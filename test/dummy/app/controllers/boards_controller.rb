@@ -3,7 +3,7 @@ class BoardsController < ApplicationController
 
   def show
     @columns = COLUMNS.index_with do |label|
-      current_contact.received_messages.where(label: label).newest_first
+      current_contact.received_messages.where(label: label).in_board_order
     end
   end
 end

@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { subscribe, unsubscribe, findSubscription } from "reactive_component/lib/cable_subscriptions"
-import { PresenceRoster } from "reactive_component/lib/presence_roster"
+import { PresenceRoster, sameState } from "reactive_component/lib/presence_roster"
 import { toAnchorPoint, fromAnchorPoint, findAnchor, coalesce } from "reactive_component/lib/presence_cursors"
 
 const HEARTBEAT = 10000
@@ -62,9 +62,32 @@ export default class extends Controller {
   // subscription is confirmed is dropped on the floor.
   subscriptionConnected() {
     this.announce()
+
+    // A reconnect builds a new channel on the server, and that channel streams
+    // only what `subscribed` verified. A cursor watch has to be asked for
+    // again or it is silently gone while this side still believes it is
+    // following — which is what a dropped connection looks like from here.
+    if (this.watching != null) {
+      findSubscription(this.streamValue)?.perform("watch_cursor", { user_id: this.watching })
+    }
   }
 
-  subscriptionDisconnected() {}
+  // Whatever was on screen is now stale, and a frozen cursor reads as a live
+  // one. Clear them rather than leaving somebody's pointer parked mid-page.
+  subscriptionDisconnected() {
+    for (const [id, ghost] of this.ghosts) {
+      ghost.remove()
+      this.ghosts.delete(id)
+    }
+    this.announceCursorsCleared()
+  }
+
+  announceCursorsCleared() {
+    this.element.dispatchEvent(new CustomEvent("reactive-presence:cursor", {
+      bubbles: true,
+      detail: { user: null, point: null, at: null, layer: this.cursorLayer ?? null }
+    }))
+  }
 
   handleMessage(message) {
     switch (message.action) {
@@ -148,12 +171,28 @@ export default class extends Controller {
   }
 
   claim(event) {
-    this.state = { field: event.target.dataset.presenceField }
+    this.state = { ...this.state, field: event.target.dataset.presenceField }
     this.announce()
   }
 
   release() {
-    this.state = {}
+    const { field, ...rest } = this.state
+    this.state = rest
+    this.announce()
+  }
+
+  // Anything else an app wants every viewer to know. `claim` and `release` own
+  // the focused field and leave the rest of the state alone, so the two do not
+  // fight over it. A key set to null is dropped rather than broadcast.
+  update(patch) {
+    const next = { ...this.state, ...patch }
+    for (const [key, value] of Object.entries(next)) {
+      if (value === null || value === undefined) delete next[key]
+    }
+
+    if (sameState(this.state, next)) return
+
+    this.state = next
     this.announce()
   }
 

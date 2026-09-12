@@ -59,6 +59,17 @@
         font-size: 8px; line-height: 11px; text-align: center;
       }
 
+      /* Somebody else is about to drop a card in this column. */
+      [data-incoming] { position: relative; outline: 2px dashed #f59e0b; outline-offset: 2px; }
+
+      [data-incoming]::after {
+        content: attr(data-incoming) " is dropping here";
+        position: absolute; left: 8px; top: -9px;
+        padding: 0 5px; border-radius: 3px;
+        background: #f59e0b; color: #422006;
+        font-size: 9px; font-weight: 600; line-height: 1.6; white-space: nowrap;
+      }
+
       .drag-preview {
         position: absolute; top: 0; left: 0;
         pointer-events: none; opacity: .85;
@@ -201,7 +212,7 @@
         watchingMe ? "following your cursor" : null
       ].filter(Boolean).join(" · ")
 
-      if (sharing) {
+      if (sharing && !isFollowed) {
         chip.type = "button"
         chip.dataset.action = "presence#watch"
         chip.dataset.presenceUserIdParam = entry.user.id

@@ -6,7 +6,8 @@
      data-presence-anchor="board"
      data-presence-stream-value="<%= ReactiveComponent.signed_stream(current_contact, :messages) %>"
      data-action="reactive-renderer:updated->board#relocate
-                  reactive-presence:cursor->board#trackDrag">
+                  reactive-presence:cursor->board#trackDrag
+                  reactive-presence:changed->board#showTargets">
 
   <div class="mb-4 flex items-center gap-3">
     <h1 class="text-lg font-bold text-gray-900">Board</h1>
