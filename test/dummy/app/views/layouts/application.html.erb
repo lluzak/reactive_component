@@ -70,11 +70,15 @@
         font-size: 9px; font-weight: 600; line-height: 1.6; white-space: nowrap;
       }
 
+      /* The travelling copy. Deliberately the same card at full opacity with a
+         lift, because the point is to look like the thing being dragged. */
       .drag-preview {
         position: absolute; top: 0; left: 0;
-        pointer-events: none; opacity: .85;
+        pointer-events: none;
         rotate: -3deg;
-        box-shadow: 0 10px 24px -8px rgba(0,0,0,.5);
+        box-shadow: 0 12px 28px -8px rgba(0,0,0,.55);
+        outline: 2px solid #f59e0b;
+        background: #fff;
       }
 
       .legend { display: inline-flex; gap: 10px; color: #6b7280; font-size: 10px; }
@@ -103,15 +107,21 @@
 
       .following-pill button:hover { background: rgba(255,255,255,.3); }
 
-      /* A card somebody else has picked up. The gem stamps the attribute; this
-         is the whole of what makes it visible. */
+      /* A card somebody else has picked up. It reads as lifted out of the
+         column, the same way it looks to the person dragging it: the slot stays
+         open as a dashed gap and the card itself travels with their cursor. */
       .card-shell[data-presence-busy] { position: relative; cursor: not-allowed; }
 
       .card-shell[data-presence-busy] > div {
-        outline: 2px solid #f59e0b;
+        outline: 2px dashed #f59e0b;
         outline-offset: 1px;
-        opacity: .65;
+        opacity: .35;
+        background: repeating-linear-gradient(45deg, #fffbeb 0 6px, #fef3c7 6px 12px);
       }
+
+      /* While their card is in flight, the gap holds its place rather than the
+         column collapsing and everything below jumping. */
+      .card-shell[data-presence-busy][data-lifted="true"] > div > * { visibility: hidden; }
 
       .card-shell[data-presence-busy]::after {
         content: attr(data-presence-busy) " is moving this";

@@ -54,17 +54,38 @@ class BoardTest < SystemTestCase
 
     using_session(:tom) { assert_selector '[data-presence-here]', wait: 10 }
 
-    # Drop message1 below message3, both of which start in the inbox.
-    using_session(:ana) { drop_card_after(@message1, @message3, 'inbox') }
+    # The seed order is newest first, so message3 already sits above message1.
+    # Reversing that is the only assertion worth making.
+    before = using_session(:tom) { inbox_order }
+
+    assert_operator before.index(card_id(@message3)), :<, before.index(card_id(@message1)),
+                    'seed order changed; this test no longer reverses anything'
+
+    using_session(:ana) { drop_card_after(@message3, @message1, 'inbox') }
 
     using_session(:tom) do
-      ids = all("[data-column='inbox'] .card-shell").pluck('data-card-id')
+      assert_selector "[data-column='inbox'] .card-shell", minimum: 2
 
-      assert_operator ids.index(card_id(@message1)), :>, ids.index(card_id(@message3)),
-                      "expected #{card_id(@message1)} after #{card_id(@message3)} in #{ids.inspect}"
+      # A move inside one column never touches `label`, so this only arrives if
+      # the reorder itself broadcasts.
+      order = []
+      reversed = false
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 15
+
+      while Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
+        order = inbox_order
+        moved = order.index(card_id(@message3))
+        anchor = order.index(card_id(@message1))
+        break if (reversed = !moved.nil? && !anchor.nil? && moved > anchor)
+
+        sleep 0.2
+      end
+
+      assert reversed,
+             "expected #{card_id(@message3)} after #{card_id(@message1)}, saw #{order.inspect}"
     end
 
-    assert_operator @message1.reload.position, :>, @message3.reload.position
+    assert_operator @message3.reload.position, :>, @message1.reload.position
   end
 
   test 'the board renders every column' do
@@ -88,6 +109,10 @@ class BoardTest < SystemTestCase
         shell.closest('[data-controller~="presence"]'), "presence")
       controller.claim({ target: shell })
     JS
+  end
+
+  def inbox_order
+    all("[data-column='inbox'] .card-shell").pluck('data-card-id')
   end
 
   def card_id(message)

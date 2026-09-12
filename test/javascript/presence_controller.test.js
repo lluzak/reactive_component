@@ -218,6 +218,64 @@ describe("following someone", () => {
   })
 })
 
+describe("meeting a stranger", () => {
+  it("answers so they do not wait out a heartbeat", async () => {
+    vi.useFakeTimers()
+    const controller = build()
+    performed.length = 0
+
+    controller.handleMessage({ action: "presence", user: tom, state: {} })
+
+    expect(announces()).toHaveLength(0)
+
+    await vi.advanceTimersByTimeAsync(600)
+
+    expect(announces()).toHaveLength(1)
+    vi.useRealTimers()
+  })
+
+  it("answers once for several arrivals at the same moment", async () => {
+    vi.useFakeTimers()
+    const controller = build()
+    performed.length = 0
+
+    controller.handleMessage({ action: "presence", user: tom, state: {} })
+    controller.handleMessage({ action: "presence", user: { id: 3, name: "Kim" }, state: {} })
+
+    await vi.advanceTimersByTimeAsync(600)
+
+    expect(announces()).toHaveLength(1)
+    vi.useRealTimers()
+  })
+
+  it("stays quiet for somebody it already knows", async () => {
+    vi.useFakeTimers()
+    const controller = build()
+    controller.handleMessage({ action: "presence", user: tom, state: {} })
+    await vi.advanceTimersByTimeAsync(600)
+    performed.length = 0
+
+    controller.handleMessage({ action: "presence", user: tom, state: { field: "body" } })
+    await vi.advanceTimersByTimeAsync(600)
+
+    expect(announces()).toHaveLength(0)
+    vi.useRealTimers()
+  })
+
+  it("does not answer its own echo", async () => {
+    vi.useFakeTimers()
+    const controller = build()
+    controller.handleMessage({ action: "presence_self", user: ana })
+    performed.length = 0
+
+    controller.handleMessage({ action: "presence", user: ana, state: {} })
+    await vi.advanceTimersByTimeAsync(600)
+
+    expect(announces()).toHaveLength(0)
+    vi.useRealTimers()
+  })
+})
+
 describe("cursor sampling", () => {
   it("installs no listener while nobody is watching", () => {
     const controller = build({ cursors: true })

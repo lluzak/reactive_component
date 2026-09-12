@@ -11,6 +11,8 @@
 - `ReactiveComponent.signed_stream` mints the stream name a `presence`
   controller needs on a plain element.
 - `ReactiveComponent.presence_state_limit` caps client-authored presence state.
+- A viewer answers anyone it has not seen before, so a newcomer appears at once
+  rather than waiting out a heartbeat. One reply per arrival, debounced.
 - Roster entries expire after 90s rather than 30s, and a tab announces as soon
   as it is foregrounded. Browsers throttle hidden-tab timers to about once a
   minute, so a shorter expiry dropped anyone who switched tabs.
