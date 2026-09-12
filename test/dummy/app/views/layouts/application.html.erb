@@ -70,12 +70,26 @@
         font-size: 9px; font-weight: 600; line-height: 1.6; white-space: nowrap;
       }
 
+      /* Where a card would land if released now. Blue for your own drag, amber
+         with a name for somebody else's, in the same spot drop() would use. */
+      .drop-slot { height: 4px; margin: 2px 4px; border-radius: 2px; background: #3b82f6; position: relative; }
+      .drop-slot--theirs { background: #f59e0b; }
+      .drop-slot--theirs::after {
+        content: attr(data-by); position: absolute; right: 0; top: -13px;
+        padding: 0 4px; border-radius: 3px; background: #f59e0b; color: #422006;
+        font-size: 9px; font-weight: 600; line-height: 1.5; white-space: nowrap;
+      }
+
       /* The travelling copy. Deliberately the same card at full opacity with a
          lift, because the point is to look like the thing being dragged. */
       .drag-preview {
         position: absolute; top: 0; left: 0;
         pointer-events: none;
         rotate: -3deg;
+        /* Frames arrive at 20 Hz; the same short transition the cursor uses
+           turns them into motion instead of a series of jumps. */
+        transition: transform 85ms linear;
+        will-change: transform;
         box-shadow: 0 12px 28px -8px rgba(0,0,0,.55);
         outline: 2px solid #f59e0b;
         background: #fff;
