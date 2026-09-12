@@ -86,6 +86,24 @@ describe("expire", () => {
   it("reports nothing when there is nothing to drop", () => {
     expect(new PresenceRoster().expire()).toBe(false)
   })
+
+  // Browsers throttle timers in a hidden tab to roughly once a minute, so a
+  // backgrounded viewer's heartbeat is late while their connection is fine.
+  // An expiry near the heartbeat interval drops anyone who switches tabs.
+  it("survives a heartbeat throttled by a hidden tab", () => {
+    vi.useFakeTimers()
+    const roster = new PresenceRoster()
+    roster.apply(ana, {})
+
+    vi.advanceTimersByTime(60000)
+
+    expect(roster.expire()).toBe(false)
+    expect(roster.others()).toHaveLength(1)
+  })
+
+  it("defaults to an expiry clear of that throttle", () => {
+    expect(new PresenceRoster().ttl).toBeGreaterThan(60000)
+  })
 })
 
 describe("others", () => {

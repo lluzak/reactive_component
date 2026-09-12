@@ -123,6 +123,22 @@ class PresenceTest < SystemTestCase
     end
   end
 
+  # The demo's own wiring, which broke three times: identity in a cookie was
+  # shared between tabs, then a missing parameter looked identical to presence
+  # being broken, then Turbo kept the socket its consumer was built with.
+  test 'a viewer who has not been named is told presence is off' do
+    visit '/board'
+
+    assert_text 'presence stays off'
+    assert_no_selector '[data-presence-here]'
+  end
+
+  test 'naming a viewer is a full page load, so the socket is rebuilt' do
+    visit '/board'
+
+    assert_selector "[data-viewer-pick][data-turbo='false']", minimum: 3
+  end
+
   private
 
   def open_message_as(session, viewer)
