@@ -125,6 +125,31 @@ class BoardTest < SystemTestCase
     end
   end
 
+  test 'both sides see the exact slot a carried card would drop into' do
+    open_board_as(:ana, @bob)
+    open_board_as(:tom, @charlie)
+
+    using_session(:tom) { assert_selector '[data-presence-here]', wait: 10 }
+
+    # Ana carries message1 to sit directly after message3, and holds it there.
+    using_session(:ana) do
+      drag_card_to(@message1, 'inbox', hold: true, after: @message3)
+
+      assert_selector "[data-card-id='#{card_id(@message3)}'] + .drop-slot--mine", wait: 10
+    end
+
+    # The drag passes the cards in between on the way, and each slot it passes
+    # is announced, so an early slot can land here first. Wait for the one it
+    # stopped at rather than reading whichever arrived.
+    using_session(:tom) do
+      assert_selector "[data-card-id='#{card_id(@message3)}'] + .drop-slot--theirs[data-by='#{@bob.name}']", wait: 10
+    end
+
+    using_session(:ana) { release_card(@message1) }
+
+    using_session(:tom) { assert_no_selector '.drop-slot--theirs', wait: 10 }
+  end
+
   test 'the board renders every column' do
     open_board_as(:ana, @bob)
 

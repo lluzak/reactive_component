@@ -15,37 +15,73 @@ export default class extends Controller {
     this.draggingId = event.currentTarget.dataset.cardId
     event.dataTransfer.effectAllowed = "move"
     event.dataTransfer.setData("text/plain", this.draggingId)
+    // The browser draws its own drag image; the card left behind should read
+    // as the slot being vacated, not as a second copy.
+    event.currentTarget.classList.add("opacity-40")
   }
 
   drophint() {
+    this.element.querySelector(`[data-card-id="${this.draggingId}"]`)?.classList.remove("opacity-40")
     this.draggingId = null
     this.announcedOver = null
-    this.presence?.update({ over: null })
+    this.announcedAfter = null
+    this.mySlot().remove()   // a cancelled drag never reaches drop()
+    this.presence?.update({ over: null, after: null })
     this.clearHints()
   }
 
   over(event) {
     event.preventDefault()
-    event.currentTarget.classList.add("ring-2", "ring-blue-400")
+    const column = event.currentTarget
+    column.classList.add("ring-2", "ring-blue-400")
 
-    // Only when the target actually changes: dragover fires continuously, and
-    // this goes out on the roster stream, not the cursor one.
-    const label = event.currentTarget.dataset.column
-    if (this.announcedOver === label) return
+    // Where the card would land if released right now — the same computation
+    // drop() makes, so the slot never lies.
+    const dragged = this.draggingId && this.element.querySelector(`[data-card-id="${this.draggingId}"]`)
+    const cards = column.querySelector("[data-cards]")
+    const after = dragged ? this.cardAbove(cards, dragged, event.clientY) : null
+    this.placeSlot(this.mySlot(), cards, after)
+
+    // Announced only when the slot moves: dragover fires continuously, and this
+    // rides the roster stream. Bounded by the number of cards, not by the mouse.
+    const label = column.dataset.column
+    const afterId = after ? after.dataset.cardId : "top"
+    if (this.announcedOver === label && this.announcedAfter === afterId) return
 
     this.announcedOver = label
-    this.presence?.update({ over: label })
+    this.announcedAfter = afterId
+    this.presence?.update({ over: label, after: afterId })
   }
 
   leave(event) {
+    // dragleave also fires when the pointer crosses into a child; only a real
+    // exit should clear anything, or the slot flickers on every card boundary.
+    if (event.currentTarget.contains(event.relatedTarget)) return
+
     event.currentTarget.classList.remove("ring-2", "ring-blue-400")
+    this.mySlot().remove()
+  }
+
+  mySlot() {
+    this.slot ||= Object.assign(document.createElement("div"), { className: "drop-slot drop-slot--mine" })
+    return this.slot
+  }
+
+  placeSlot(slot, cards, after) {
+    if (after) {
+      if (slot.previousElementSibling !== after) after.after(slot)
+    } else if (cards.firstElementChild !== slot) {
+      cards.prepend(slot)
+    }
   }
 
   drop(event) {
     event.preventDefault()
     this.clearHints()
+    this.mySlot().remove()
     this.announcedOver = null
-    this.presence?.update({ over: null })
+    this.announcedAfter = null
+    this.presence?.update({ over: null, after: null })
 
     const label = event.currentTarget.dataset.column
     const id = this.draggingId || event.dataTransfer.getData("text/plain")
@@ -184,6 +220,34 @@ export default class extends Controller {
       const name = incoming.get(column.dataset.column)
       if (name) column.setAttribute("data-incoming", name)
       else column.removeAttribute("data-incoming")
+    }
+
+    // The exact slot each of them would drop into, in this page's own order.
+    this.theirSlots ||= new Map()
+    const active = new Set()
+
+    for (const entry of event.detail.others) {
+      const { over, after } = entry.state
+      if (!over) continue
+      const cards = this.element.querySelector(`[data-column="${over}"] [data-cards]`)
+      if (!cards) continue
+      const anchor = after && after !== "top" ? cards.querySelector(`[data-card-id="${after}"]`) : null
+      if (after && after !== "top" && !anchor) continue   // not on this page yet: skip, don't guess
+
+      let slot = this.theirSlots.get(entry.user.id)
+      if (!slot) {
+        slot = Object.assign(document.createElement("div"), { className: "drop-slot drop-slot--theirs" })
+        this.theirSlots.set(entry.user.id, slot)
+      }
+      slot.dataset.by = entry.user.name
+      this.placeSlot(slot, cards, anchor)
+      active.add(entry.user.id)
+    }
+
+    for (const [id, slot] of this.theirSlots) {
+      if (active.has(id)) continue
+      slot.remove()
+      this.theirSlots.delete(id)
     }
   }
 
