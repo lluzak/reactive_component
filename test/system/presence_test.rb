@@ -97,6 +97,13 @@ class PresenceTest < SystemTestCase
 
     using_session(:tom) do
       assert_selector ".reactive-presence-cursor[data-presence-user='#{@bob.name}']", visible: :all, wait: 10
+
+      # Stopping tells the server to stop streaming, so no frame will ever
+      # arrive to remove the ghost. The client has to take it down itself.
+      find('.following-pill button').click
+
+      assert_no_selector '.reactive-presence-cursor', visible: :all, wait: 5
+      assert_no_selector '.following-pill', wait: 5
     end
   end
 

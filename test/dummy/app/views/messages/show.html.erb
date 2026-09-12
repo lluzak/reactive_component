@@ -15,7 +15,10 @@
           <%= render MessageDetailComponent.new(message: @message) %>
         </div>
         <div class="border-t border-gray-200 bg-white px-6 py-4">
-          <div id="viewers" class="flex gap-2 mb-2"></div>
+          <div class="flex items-center gap-2 mb-2">
+            <div id="viewers" class="flex gap-2"></div>
+            <span id="following_status"></span>
+          </div>
           <button type="button" id="share_cursor" class="text-xs text-gray-500 mb-2"
                   data-action="presence#shareCursor">Share my cursor</button>
           <label class="block text-xs uppercase tracking-wide text-gray-400 mb-1">Reply</label>

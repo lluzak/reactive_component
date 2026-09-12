@@ -208,6 +208,32 @@ describe("following someone", () => {
     expect(performed.filter(p => p.action === "watch_cursor").map(p => p.data.user_id)).toEqual([2])
   })
 
+  it("takes the ghost down on unfollow, since no frame ever will", () => {
+    const controller = build({ cursors: true })
+    controller.handleMessage({ action: "presence", user: tom, state: { sharing: true } })
+    controller.watch({ params: { userId: tom.id } })
+    controller.paintCursor(tom, { a: "board", x: 0.5, y: 0.5 })
+
+    const seen = []
+    controller.element.addEventListener("reactive-presence:cursor", (e) => seen.push(e.detail))
+    controller.watch({ params: { userId: tom.id } })
+
+    expect(controller.element.querySelector(".reactive-presence-cursor")).toBeNull()
+    expect(seen.at(-1).at).toBeNull()
+    expect(seen.at(-1).user.id).toBe(tom.id)
+  })
+
+  it("takes the old ghost down when switching to somebody else", () => {
+    const controller = build({ cursors: true })
+    controller.watch({ params: { userId: tom.id } })
+    controller.paintCursor(tom, { a: "board", x: 0.5, y: 0.5 })
+
+    controller.watch({ params: { userId: 3 } })
+
+    expect(controller.element.querySelector(".reactive-presence-cursor")).toBeNull()
+    expect(controller.watching).toBe(3)
+  })
+
   it("asks for nothing on reconnect when not following anyone", () => {
     const controller = build()
     performed.length = 0
