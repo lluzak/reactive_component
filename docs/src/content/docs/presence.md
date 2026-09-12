@@ -206,6 +206,8 @@ Even so, 20 frames a second against the roster's one per ten seconds is three or
 
 Two limits worth knowing before you switch this on:
 
-**Joining is not instant.** There is no hello handshake, so a newcomer waits up to one heartbeat to see the room. The alternative was every peer re-announcing at once on every arrival.
+**Joining answers back.** A viewer who receives a frame from somebody not already in their roster announces once, debounced and jittered. That costs one reply per arrival rather than per heartbeat, and it is what makes a newcomer visible immediately instead of after a beat.
+
+This matters more than it sounds. A browser throttles timers in a hidden tab to roughly once a minute, so without the reply a newcomer could sit for a full minute before an existing viewer in a background tab announced itself.
 
 **Announce traffic is O(n²) per stream.** Every viewer's heartbeat reaches every other viewer. At one frame per 10 seconds that is nothing for a handful of people on a document. Past roughly 50 concurrent viewers on a single stream it wants a Redis-backed roster on the server instead.

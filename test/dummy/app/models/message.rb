@@ -41,9 +41,17 @@ class Message < ApplicationRecord
     index = after ? siblings.index { |m| m.id == after.to_i }&.succ || siblings.size : 0
     siblings.insert(index, self)
 
+    self.label = label
+
     transaction do
-      update!(label: label)
-      siblings.each_with_index { |message, i| message.update_column(:position, i) }
+      siblings.each_with_index do |message, i|
+        message.position = i
+        # save!, not update_column: a silent write fires no callbacks, so the
+        # reorder would never broadcast and only the person dragging would see
+        # it. A move within one column does not touch `label` at all, so
+        # position is the only thing that makes the record dirty.
+        message.save! if message.changed?
+      end
     end
   end
 

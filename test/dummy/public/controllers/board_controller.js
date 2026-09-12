@@ -96,9 +96,6 @@ export default class extends Controller {
     const cards = this.element.querySelector(`[data-column="${label}"] [data-cards]`)
     if (!cards) return
 
-    const position = Number(shell.querySelector("[data-position]")?.dataset.position ?? 0)
-    if (shell.parentElement === cards && this.positionOf(shell) === position) return
-
     // Measure, move, then play the gap back as a transform, so somebody else's
     // move reads as the card travelling rather than teleporting between columns.
     const from = shell.getBoundingClientRect()
@@ -129,6 +126,8 @@ export default class extends Controller {
         preview.remove()
         this.previews.delete(id)
       }
+      this.element.querySelectorAll('[data-lifted="true"]')
+        .forEach(shell => delete shell.dataset.lifted)
       return
     }
 
@@ -138,6 +137,8 @@ export default class extends Controller {
     if (!held) {
       preview?.remove()
       this.previews.delete(user.id)
+      this.element.querySelectorAll('[data-lifted="true"]')
+        .forEach(shell => delete shell.dataset.lifted)
       return
     }
 
@@ -152,6 +153,10 @@ export default class extends Controller {
     }
 
     preview.style.transform = `translate3d(${at.x + 12}px, ${at.y + 12}px, 0)`
+
+    // The source slot empties while the copy is in flight, so the card looks
+    // picked up rather than duplicated.
+    held.dataset.lifted = "true"
   }
 
   // Where everybody else is about to drop. Column granularity, so it costs one

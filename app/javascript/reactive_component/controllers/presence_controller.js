@@ -32,10 +32,9 @@ export default class extends Controller {
 
     subscribe(this.streamValue, this)
 
-    // ponytail: no join handshake — a newcomer's roster fills within one
-    // heartbeat instead of every peer re-announcing at once on every arrival.
-    // Announce traffic is O(n^2) per stream; past roughly 50 concurrent
-    // viewers this wants a Redis-backed roster on the server.
+    // ponytail: announce traffic is O(n^2) per stream, plus one reply per
+    // arrival. At a beat per 10s that is nothing for a handful of people; past
+    // roughly 50 concurrent viewers it wants a Redis-backed roster instead.
     this.beat = setInterval(() => this.announce(), HEARTBEAT)
     this.sweep = setInterval(() => this.expire(), SWEEP)
 
@@ -52,6 +51,7 @@ export default class extends Controller {
   disconnect() {
     clearInterval(this.beat)
     clearInterval(this.sweep)
+    clearTimeout(this.greeting)
     document.removeEventListener("visibilitychange", this.onVisible)
     this.element.removeEventListener("reactive-presence:request", this.onRequest)
     this.stopSampling()
@@ -98,9 +98,16 @@ export default class extends Controller {
         this.changed()
         break
 
-      case "presence":
+      case "presence": {
+        const known = this.roster.entries.has(message.user.id)
         if (this.roster.apply(message.user, message.state)) this.changed()
+        // A stranger has to be answered, or they wait out a heartbeat to learn
+        // this viewer exists — and a heartbeat from a hidden tab can be a
+        // minute late. One reply per arrival, not per beat, so this costs n
+        // frames when somebody joins rather than n² forever.
+        if (!known && message.user.id !== this.roster.selfId) this.greet()
         break
+      }
 
       case "presence_leave":
         // A leave is per connection but a roster is per user, so the same
@@ -133,6 +140,18 @@ export default class extends Controller {
       if (!this.roster.entries.has(id)) this.paintCursor({ id }, null)
     }
     this.changed()
+  }
+
+  // Debounced and jittered: several people arriving at once should produce one
+  // reply from this viewer, and a room full of viewers should not answer a
+  // newcomer in the same millisecond.
+  greet() {
+    if (this.greeting) return
+
+    this.greeting = setTimeout(() => {
+      this.greeting = null
+      this.announce()
+    }, 100 + Math.random() * 400)
   }
 
   announce() {
