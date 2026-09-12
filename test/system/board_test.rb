@@ -48,6 +48,25 @@ class BoardTest < SystemTestCase
     assert_equal 'inbox', @message1.reload.label
   end
 
+  test 'a card dropped below another lands after it for everyone' do
+    open_board_as(:ana, @bob)
+    open_board_as(:tom, @charlie)
+
+    using_session(:tom) { assert_selector '[data-presence-here]', wait: 10 }
+
+    # Drop message1 below message3, both of which start in the inbox.
+    using_session(:ana) { drop_card_after(@message1, @message3, 'inbox') }
+
+    using_session(:tom) do
+      ids = all("[data-column='inbox'] .card-shell").pluck('data-card-id')
+
+      assert_operator ids.index(card_id(@message1)), :>, ids.index(card_id(@message3)),
+                      "expected #{card_id(@message1)} after #{card_id(@message3)} in #{ids.inspect}"
+    end
+
+    assert_operator @message1.reload.position, :>, @message3.reload.position
+  end
+
   test 'the board renders every column' do
     open_board_as(:ana, @bob)
 
@@ -97,6 +116,28 @@ class BoardTest < SystemTestCase
       board.drop({
         preventDefault() {},
         currentTarget: column,
+        clientY: 0,
+        dataTransfer: { getData: () => arguments[0] }
+      })
+    JS
+  end
+
+  # Drops `message` just below `target`, which is what the pointer being past
+  # that card's midpoint means.
+  def drop_card_after(message, target, label)
+    page.execute_script(<<~JS, card_id(message), card_id(target), label)
+      const shell = document.querySelector(`[data-card-id="${arguments[0]}"]`)
+      const target = document.querySelector(`[data-card-id="${arguments[1]}"]`)
+      const column = document.querySelector(`[data-column="${arguments[2]}"]`)
+      const board = window.Stimulus.getControllerForElementAndIdentifier(
+        shell.closest('[data-controller~="board"]'), "board")
+      const rect = target.getBoundingClientRect()
+
+      board.pick({ currentTarget: shell, preventDefault() {}, dataTransfer: { effectAllowed: "", setData() {} } })
+      board.drop({
+        preventDefault() {},
+        currentTarget: column,
+        clientY: rect.top + rect.height * 0.75,
         dataTransfer: { getData: () => arguments[0] }
       })
     JS

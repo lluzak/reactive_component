@@ -1,7 +1,8 @@
 <%# data-label is what tells the board which column this card belongs in now.
     It is inside the component, so it is rewritten by every broadcast. %>
 <div class="rounded border border-gray-200 bg-white px-3 py-2 shadow-sm"
-     data-label="<%= @message.label %>">
+     data-label="<%= @message.label %>"
+     data-position="<%= @message.position %>">
   <div class="text-sm font-medium text-gray-900"><%= @message.subject %></div>
   <div class="mt-0.5 text-xs text-gray-500"><%= @message.sender.name %></div>
 </div>

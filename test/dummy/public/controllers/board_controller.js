@@ -19,12 +19,22 @@ export default class extends Controller {
 
   drophint() {
     this.draggingId = null
+    this.announcedOver = null
+    this.presence?.update({ over: null })
     this.clearHints()
   }
 
   over(event) {
     event.preventDefault()
     event.currentTarget.classList.add("ring-2", "ring-blue-400")
+
+    // Only when the target actually changes: dragover fires continuously, and
+    // this goes out on the roster stream, not the cursor one.
+    const label = event.currentTarget.dataset.column
+    if (this.announcedOver === label) return
+
+    this.announcedOver = label
+    this.presence?.update({ over: label })
   }
 
   leave(event) {
@@ -34,15 +44,20 @@ export default class extends Controller {
   drop(event) {
     event.preventDefault()
     this.clearHints()
+    this.announcedOver = null
+    this.presence?.update({ over: null })
 
     const label = event.currentTarget.dataset.column
     const id = this.draggingId || event.dataTransfer.getData("text/plain")
     const shell = this.element.querySelector(`[data-card-id="${id}"]`)
     if (!shell || !label) return
 
+    const cards = event.currentTarget.querySelector("[data-cards]")
+    const after = this.cardAbove(cards, shell, event.clientY)
+
     // Move it locally first so the drag feels immediate. The broadcast will
     // land every other browser in the same place a moment later.
-    event.currentTarget.querySelector("[data-cards]").append(shell)
+    after ? after.after(shell) : cards.prepend(shell)
 
     const card = shell.querySelector('[data-controller~="reactive-renderer"]')
     const renderer = this.application.getControllerForElementAndIdentifier(card, "reactive-renderer")
@@ -50,8 +65,25 @@ export default class extends Controller {
       type: "drop",
       preventDefault() {},
       stopPropagation() {},
-      params: { action: "move", label }
+      params: { action: "move", label, after: after ? this.messageId(after) : "" }
     })
+  }
+
+  // The card the pointer is below, which is the one the drop should land after.
+  cardAbove(cards, dragged, clientY) {
+    let above = null
+
+    for (const shell of cards.querySelectorAll(".card-shell")) {
+      if (shell === dragged) continue
+      const rect = shell.getBoundingClientRect()
+      if (clientY > rect.top + rect.height / 2) above = shell
+    }
+
+    return above
+  }
+
+  messageId(shell) {
+    return shell.dataset.cardId.replace("card_message_", "")
   }
 
   // A card that moved in somebody else's browser arrives here as an ordinary
@@ -62,12 +94,15 @@ export default class extends Controller {
     if (!label) return
 
     const cards = this.element.querySelector(`[data-column="${label}"] [data-cards]`)
-    if (!cards || shell.parentElement === cards) return
+    if (!cards) return
+
+    const position = Number(shell.querySelector("[data-position]")?.dataset.position ?? 0)
+    if (shell.parentElement === cards && this.positionOf(shell) === position) return
 
     // Measure, move, then play the gap back as a transform, so somebody else's
     // move reads as the card travelling rather than teleporting between columns.
     const from = shell.getBoundingClientRect()
-    cards.append(shell)
+    this.insertInOrder(cards, shell)
     const to = shell.getBoundingClientRect()
 
     const dx = from.left - to.left
@@ -86,6 +121,16 @@ export default class extends Controller {
   trackDrag(event) {
     const { user, at, layer } = event.detail
     this.previews ||= new Map()
+
+    // A cleared event names nobody: the connection dropped, so nothing on
+    // screen can be trusted.
+    if (!user) {
+      for (const [id, preview] of this.previews) {
+        preview.remove()
+        this.previews.delete(id)
+      }
+      return
+    }
 
     const held = at && this.heldBy(user.name)
     let preview = this.previews.get(user.id)
@@ -107,6 +152,39 @@ export default class extends Controller {
     }
 
     preview.style.transform = `translate3d(${at.x + 12}px, ${at.y + 12}px, 0)`
+  }
+
+  // Where everybody else is about to drop. Column granularity, so it costs one
+  // frame per change of mind rather than one per mouse move.
+  showTargets(event) {
+    const incoming = new Map()
+    for (const entry of event.detail.others) {
+      if (entry.state.over) incoming.set(entry.state.over, entry.user.name)
+    }
+
+    for (const column of this.element.querySelectorAll("[data-column]")) {
+      const name = incoming.get(column.dataset.column)
+      if (name) column.setAttribute("data-incoming", name)
+      else column.removeAttribute("data-incoming")
+    }
+  }
+
+  get presence() {
+    return this.application.getControllerForElementAndIdentifier(this.element, "presence")
+  }
+
+  // Somebody else's reorder arrives as a component update carrying the new
+  // position, so the board puts the card where that position says.
+  insertInOrder(cards, shell) {
+    const position = Number(shell.querySelector("[data-position]")?.dataset.position ?? 0)
+    const later = [...cards.querySelectorAll(".card-shell")]
+      .find(other => other !== shell && this.positionOf(other) > position)
+
+    later ? later.before(shell) : cards.append(shell)
+  }
+
+  positionOf(shell) {
+    return Number(shell.querySelector("[data-position]")?.dataset.position ?? 0)
   }
 
   heldBy(name) {

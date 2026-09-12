@@ -51,7 +51,7 @@ export class PresenceRoster {
   }
 }
 
-function sameState(a = {}, b = {}) {
+export function sameState(a = {}, b = {}) {
   const keys = new Set([...Object.keys(a), ...Object.keys(b)])
 
   for (const key of keys) {
