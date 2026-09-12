@@ -162,6 +162,19 @@ export default class extends Controller {
   // Where everybody else is about to drop. Column granularity, so it costs one
   // frame per change of mind rather than one per mouse move.
   showTargets(event) {
+    // A drop clears the hold before the next cursor frame arrives, and the
+    // mouse may not move again. Drop any preview whose card is no longer held.
+    for (const [id, preview] of this.previews ?? []) {
+      const entry = event.detail.others.find(other => other.user.id === id)
+      if (entry && this.heldBy(entry.user.name)) continue
+
+      preview.remove()
+      this.previews.delete(id)
+    }
+    this.element.querySelectorAll('[data-lifted="true"]').forEach(shell => {
+      if (!shell.hasAttribute("data-presence-busy")) delete shell.dataset.lifted
+    })
+
     const incoming = new Map()
     for (const entry of event.detail.others) {
       if (entry.state.over) incoming.set(entry.state.over, entry.user.name)

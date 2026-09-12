@@ -5,6 +5,7 @@ import { toAnchorPoint, fromAnchorPoint, findAnchor, coalesce } from "reactive_c
 
 const HEARTBEAT = 10000
 const SWEEP = 1000
+const SAMPLED_EVENTS = ["mousemove", "dragover"]
 
 // Browsers throttle timers in a hidden tab to roughly once a minute, so a
 // heartbeat from a backgrounded viewer can be a minute late. The expiry has to
@@ -180,7 +181,13 @@ export default class extends Controller {
     const userId = event.params.userId
     const subscription = findSubscription(this.streamValue)
 
-    if (this.watching != null) subscription?.perform("unwatch_cursor", { user_id: this.watching })
+    if (this.watching != null) {
+      subscription?.perform("unwatch_cursor", { user_id: this.watching })
+      // The server stops streaming that cursor, so no frame will ever arrive
+      // to take its ghost down. Take it down here, and say so, or it stays
+      // parked wherever it was last seen.
+      this.dropGhost(this.watching)
+    }
 
     this.watching = this.watching === userId ? null : userId
 
@@ -258,15 +265,25 @@ export default class extends Controller {
       if (point) send(point)
     }
 
-    this.element.addEventListener("mousemove", this.sampler)
+    // A browser stops firing mousemove the moment a native drag begins and
+    // fires dragover instead, so without the second listener the cursor goes
+    // dark exactly when somebody is carrying something.
+    for (const type of SAMPLED_EVENTS) this.element.addEventListener(type, this.sampler)
   }
 
   stopSampling() {
     if (!this.sampler) return
 
-    this.element.removeEventListener("mousemove", this.sampler)
+    for (const type of SAMPLED_EVENTS) this.element.removeEventListener(type, this.sampler)
     this.sampler = null
     findSubscription(this.streamValue)?.perform("cursor", { cursor: null })
+  }
+
+  dropGhost(userId) {
+    if (!this.ghosts.has(userId)) return
+
+    const user = this.roster.entries.get(userId)?.user ?? { id: userId }
+    this.paintCursor(user, null)
   }
 
   // Watching several people means several frames a tick. Paint once.
