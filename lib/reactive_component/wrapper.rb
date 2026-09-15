@@ -8,6 +8,11 @@ module ReactiveComponent
              params: nil, template_id: nil)
       dom_id_val = component_class.dom_id_for(record)
 
+      if strategy.to_s == 'notify'
+        component_name ||= component_class.name
+        params = { record_id: record.id }.merge(params || {})
+      end
+
       attrs = [
         %(id="#{dom_id_val}"),
         %(data-controller="reactive-renderer"),
