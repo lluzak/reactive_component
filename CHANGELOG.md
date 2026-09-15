@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.8.3] - 2026-09-15
 
 ### Added
 - Notify mode guide. A notify component re-renders from the server instead of
