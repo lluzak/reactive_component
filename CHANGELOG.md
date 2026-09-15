@@ -8,6 +8,8 @@
   list. See Notify Mode.
 - Notify wrappers fill in the component name and record id, so
   `live_wrapper_options` only needs `strategy: :notify`.
+- `subscribes_to ..., fields:` limits a component's update broadcasts to
+  changes in the listed columns, like `rebuilds_on ..., fields:` on entities.
 - `ReactiveComponent.skip_own_broadcasts`: the component that ran a
   `live_action` ignores the broadcast it caused and keeps its optimistic
   update. Off by default; override per component with `live_wrapper_options`.
