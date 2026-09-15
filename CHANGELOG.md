@@ -9,6 +9,8 @@
   Other bundlers in the Installation guide.
 - Pushing a `vX.Y.Z` tag builds the gem, publishes the JS package, and
   creates the GitHub release.
+- `subscribes_to ..., fields:` limits a component's update broadcasts to
+  changes in the listed columns, like `rebuilds_on ..., fields:` on entities.
 
 ## [0.8.1] - 2026-09-11
 

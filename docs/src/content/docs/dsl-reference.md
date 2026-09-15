@@ -18,7 +18,7 @@ end
 
 ---
 
-## `subscribes_to(attr_name, class_name: nil, only: %i[create update destroy])`
+## `subscribes_to(attr_name, class_name: nil, only: %i[create update destroy], fields: nil)`
 
 Declares which instance variable holds the model record that drives the component. Calling this method also **automatically wires the model** — no changes to the model class are needed. ReactiveComponent includes `ReactiveComponent::Broadcastable` on the model and registers `after_create_commit`, `after_update_commit`, and `after_destroy_commit` callbacks that trigger broadcasts.
 
@@ -29,6 +29,7 @@ Declares which instance variable holds the model record that drives the componen
 | `attr_name` | `Symbol` | The name of the instance variable (without the `@` prefix). |
 | `class_name:` | `String` or `nil` | Optional explicit model class name. Use this when the class name cannot be inferred from the attribute name (e.g. namespaced models). |
 | `only:` | `Symbol` or `Array<Symbol>` | Limits which lifecycle events trigger a broadcast. Accepts any combination of `:create`, `:update`, `:destroy`. Defaults to all three. |
+| `fields:` | `Symbol` or `Array<Symbol>` or `nil` | Limits updates to changes in these columns. Creates, destroys, and manual `broadcast_reactive_update` calls always broadcast. Defaults to `nil` (any column). |
 
 **Examples:**
 
@@ -70,6 +71,21 @@ class OrderStatusComponent < ApplicationComponent
   end
 end
 ```
+
+```ruby
+# Re-render only when the status or total changes, not on every touch of updated_at
+class OrderStatusComponent < ApplicationComponent
+  include ReactiveComponent
+
+  subscribes_to :order, fields: %i[status total_cents]
+
+  def initialize(order:)
+    @order = order
+  end
+end
+```
+
+List every column the template reads: a change to a column left out never reaches the page. `fields:` applies to model subscriptions; a [derived entity](/reactive_component/derived-entities/) narrows its sources with `rebuilds_on ..., fields:` instead.
 
 The framework uses this to:
 - Look up the record for data extraction and re-rendering

@@ -168,6 +168,34 @@ class ReactiveComponent::BroadcastableTest < ActiveSupport::TestCase
     end
   end
 
+  # --- fields: ---
+
+  test 'subscribes_to stores fields as column names' do
+    original_classes = Message.reactive_component_classes
+    klass = Class.new(ApplicationComponent) do
+      include ReactiveComponent
+
+      subscribes_to :message, fields: %i[subject starred]
+    end
+
+    assert_equal %w[subject starred], klass._subscribed_fields
+  ensure
+    Message.reactive_component_classes = original_classes
+  end
+
+  test 'an update broadcasts only when a subscribed field changed' do
+    with_row_subscribed_to_fields(%w[starred]) do |stream_name|
+      assert_broadcasts(stream_name, 0) { @message.update!(body: 'Edited') }
+      assert_broadcasts(stream_name, 1) { @message.update!(starred: true) }
+    end
+  end
+
+  test 'broadcast_reactive_update ignores fields' do
+    with_row_subscribed_to_fields(%w[starred]) do |stream_name|
+      assert_broadcasts(stream_name, 1) { @message.broadcast_reactive_update }
+    end
+  end
+
   # --- broadcast_reactive_update (manual broadcast) ---
 
   test 'broadcast_reactive_update sends update for all registered components' do
@@ -243,5 +271,22 @@ class ReactiveComponent::BroadcastableTest < ActiveSupport::TestCase
     assert_broadcasts(stream_name, 1) do
       ReactiveComponent.broadcast_for(klass, @message, action: :destroy)
     end
+  end
+
+  private
+
+  def with_row_subscribed_to_fields(fields)
+    original_classes = Message.reactive_component_classes
+    original_fields = MessageRowComponent._subscribed_fields
+    Message.reactive_component_classes = Set[MessageRowComponent]
+    MessageRowComponent._subscribed_fields = fields
+    @message.save!
+
+    yield Turbo::StreamsChannel.verified_stream_name(
+      Turbo::StreamsChannel.signed_stream_name(MessageRowComponent._broadcast_config[:stream].call(@message))
+    )
+  ensure
+    Message.reactive_component_classes = original_classes
+    MessageRowComponent._subscribed_fields = original_fields
   end
 end
