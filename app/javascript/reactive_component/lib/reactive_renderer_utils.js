@@ -85,20 +85,16 @@ export function routeMessage(message, elementId, strategy) {
     return { type: "render", data }
   }
 
-  if (strategy === "notify" && (action === "update" || action === "destroy")) {
-    return { type: "request_update" }
+  if (action === "destroy" && data?.dom_id === elementId) {
+    return { type: "destroy" }
   }
 
   if (action === "update" && data?.dom_id === elementId) {
-    return { type: "update", data }
+    return strategy === "notify" ? { type: "request_update" } : { type: "update", data }
   }
 
   if (action === "remove" && (message.dom_id || data?.dom_id) === elementId) {
     return { type: "remove" }
-  }
-
-  if (action === "destroy" && data?.dom_id === elementId) {
-    return { type: "destroy" }
   }
 
   return { type: "ignore" }
