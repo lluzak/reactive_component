@@ -125,6 +125,25 @@ class ReactiveComponent::WrapperTest < ActiveSupport::TestCase
     assert_equal({ 'record_id' => @message.id, 'folder' => 'starred' }, params)
   end
 
+  test 'wrap follows the global skip_own_broadcasts setting' do
+    original = ReactiveComponent.skip_own_broadcasts
+    ReactiveComponent.skip_own_broadcasts = true
+
+    html = ReactiveComponent::Wrapper.wrap(MessageRowComponent, @message, '<p>inner</p>')
+
+    assert_includes html, %(data-reactive-renderer-skip-own-broadcasts-value="true")
+  ensure
+    ReactiveComponent.skip_own_broadcasts = original
+  end
+
+  test 'wrap lets a component override skip_own_broadcasts' do
+    html = ReactiveComponent::Wrapper.wrap(MessageRowComponent, @message, '<p>inner</p>', skip_own_broadcasts: true)
+
+    assert_includes html, %(data-reactive-renderer-skip-own-broadcasts-value="true")
+    assert_not_includes ReactiveComponent::Wrapper.wrap(MessageRowComponent, @message, '<p>inner</p>'),
+                        'skip-own-broadcasts'
+  end
+
   test 'wrap includes params when provided' do
     html = ReactiveComponent::Wrapper.wrap(MessageRowComponent, @message, '<p>inner</p>', params: { unread: '1' })
 

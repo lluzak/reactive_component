@@ -39,6 +39,17 @@ class ReactiveComponent::ChannelTest < ActionCable::Channel::TestCase
     ReactiveComponent::Channel.compress = original
   end
 
+  test 'broadcast_data tags the payload with the Turbo request id' do
+    stream = ['test_stream']
+    stream_name = Turbo::StreamsChannel.verified_stream_name(Turbo::StreamsChannel.signed_stream_name(stream))
+
+    Turbo.with_request_id('req-1') do
+      assert_broadcast_on(stream_name, { action: :update, data: { 'id' => 1 }, request_id: 'req-1' }) do
+        ReactiveComponent::Channel.broadcast_data(stream, action: :update, data: { 'id' => 1 })
+      end
+    end
+  end
+
   # --- request_update ---
 
   def alice_and_bob_messages

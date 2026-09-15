@@ -78,8 +78,12 @@ export function buildActionBody(actionName, actionToken, stimulusParams, formDat
   return { body, redirect }
 }
 
-export function routeMessage(message, elementId, strategy) {
+export function routeMessage(message, elementId, strategy, ownRequestIds) {
   const { action, data } = message
+
+  if (action === "update" && ownRequestIds?.has(message.request_id)) {
+    return { type: "ignore" }
+  }
 
   if (action === "render" && data?.dom_id === elementId) {
     return { type: "render", data }

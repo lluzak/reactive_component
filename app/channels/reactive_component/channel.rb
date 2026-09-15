@@ -70,6 +70,7 @@ module ReactiveComponent
         stream_name = Turbo::StreamsChannel.verified_stream_name(signed)
 
         payload = { action: action, data: data }
+        payload[:request_id] = Turbo.current_request_id if Turbo.current_request_id
 
         if compress
           json = ActiveSupport::JSON.encode(payload)
