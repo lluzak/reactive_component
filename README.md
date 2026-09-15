@@ -99,7 +99,7 @@ See the [full architecture guide](https://lluzak.github.io/reactive_component/ho
 - **Nested components** -- Render reactive components inside other reactive components. [Guide](https://lluzak.github.io/reactive_component/nested-components.html)
 - **Collection loops** -- Use `.each` in templates with automatic per-item data extraction. [Guide](https://lluzak.github.io/reactive_component/collections.html)
 - **Broadcast compression** -- Gzip-compress ActionCable payloads for large components. [Configuration](https://lluzak.github.io/reactive_component/configuration.html)
-- **Stream filtering** -- Filter broadcasts by subscription params for scoped updates. [Configuration](https://lluzak.github.io/reactive_component/configuration.html)
+- **Notify mode** -- Re-render from the server on change, and drop rows that no longer match a filtered list. [Guide](https://lluzak.github.io/reactive_component/notify-mode.html)
 - **Derived entities** -- Subscribe a component to an object built from several models. [Guide](https://lluzak.github.io/reactive_component/derived-entities.html)
 
 ## Development

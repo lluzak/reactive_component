@@ -69,7 +69,8 @@ export default class extends Controller {
     strategy: { type: String, default: "push" },
     component: { type: String, default: "" },
     params: { type: Object, default: {} },
-    fieldMap: { type: Object, default: {} }
+    fieldMap: { type: Object, default: {} },
+    skipOwnBroadcasts: { type: Boolean, default: false }
   }
 
   connect() {
@@ -123,7 +124,7 @@ export default class extends Controller {
   }
 
   handleMessage(message) {
-    const route = routeMessage(message, this.element.id, this.strategyValue)
+    const route = routeMessage(message, this.element.id, this.strategyValue, this.ownRequestIds)
 
     switch (route.type) {
       case "render":
@@ -205,9 +206,7 @@ export default class extends Controller {
 
     fetch(this.actionUrlValue, {
       method: "POST",
-      headers: {
-        "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content,
-      },
+      headers: this.actionHeaders(),
       body
     }).then(response => {
       if (!response.ok && rollbackData) {
@@ -227,6 +226,20 @@ export default class extends Controller {
         this.render({ ...this.lastServerData, ...this.clientState })
       }
     })
+  }
+
+  // With skipOwnBroadcasts, tags the request so the broadcast it causes can be
+  // recognised and ignored. Turbo's header name, so turbo-rails tracks the id.
+  actionHeaders() {
+    const headers = { "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content }
+    if (!this.skipOwnBroadcastsValue) return headers
+
+    const requestId = crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)
+    this.ownRequestIds ??= new Set()
+    this.ownRequestIds.add(requestId)
+    if (this.ownRequestIds.size > 20) this.ownRequestIds.delete(this.ownRequestIds.values().next().value)
+    headers["X-Turbo-Request-Id"] = requestId
+    return headers
   }
 
   setState(event) {

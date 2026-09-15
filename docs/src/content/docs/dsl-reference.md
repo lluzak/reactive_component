@@ -236,6 +236,8 @@ For actions that accept parameters, pass them as additional Stimulus params:
 </button>
 ```
 
+**Your own broadcast:** the action's model change broadcasts to every viewer, including the one who clicked. Set [`ReactiveComponent.skip_own_broadcasts`](/reactive_component/configuration/#reactivecomponentskip_own_broadcasts) to have the acting component ignore it and keep its optimistic update.
+
 **Security:** Each component instance generates a signed token (`live_action_token`) that is embedded in the wrapper `<div>`. The server verifies this token before executing any action, ensuring that the component class and record cannot be tampered with. Client params are filtered with `permit` against the declared `params:` spec, so the action method only ever sees the keys and shapes the component declared. The token expires after `ReactiveComponent.action_token_ttl` (default one day), and the endpoint enforces CSRF with `protect_from_forgery`, using the token from `csrf_meta_tags`.
 
 ---

@@ -5,8 +5,13 @@ module ReactiveComponent
     module_function
 
     def wrap(component_class, record, inner_html, stream: nil, client_state: nil, strategy: nil, component_name: nil,
-             params: nil, template_id: nil)
+             params: nil, template_id: nil, skip_own_broadcasts: ReactiveComponent.skip_own_broadcasts)
       dom_id_val = component_class.dom_id_for(record)
+
+      if strategy.to_s == 'notify'
+        component_name ||= component_class.name
+        params = { record_id: record.id }.merge(params || {})
+      end
 
       attrs = [
         %(id="#{dom_id_val}"),
@@ -32,6 +37,8 @@ module ReactiveComponent
       end
 
       attrs << %(data-reactive-renderer-strategy-value="#{strategy}") if strategy
+
+      attrs << %(data-reactive-renderer-skip-own-broadcasts-value="true") if skip_own_broadcasts
 
       attrs << %(data-reactive-renderer-component-value="#{component_name}") if component_name
 

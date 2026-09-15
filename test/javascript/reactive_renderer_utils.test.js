@@ -103,9 +103,14 @@ describe("routeMessage", () => {
     })
   })
 
-  it("routes update with notify strategy to request_update", () => {
+  it("routes update of its own record with notify strategy to request_update", () => {
     const message = { action: "update", data: { dom_id: "message_1" } }
     expect(routeMessage(message, elementId, "notify")).toEqual({ type: "request_update" })
+  })
+
+  it("ignores update of another record with notify strategy", () => {
+    const message = { action: "update", data: { dom_id: "message_2" } }
+    expect(routeMessage(message, elementId, "notify")).toEqual({ type: "ignore" })
   })
 
   it("routes remove with matching dom_id in data", () => {
@@ -123,9 +128,34 @@ describe("routeMessage", () => {
     expect(routeMessage(message, elementId, "push")).toEqual({ type: "destroy" })
   })
 
-  it("routes destroy with notify strategy to request_update", () => {
+  it("routes destroy of its own record with notify strategy to destroy", () => {
     const message = { action: "destroy", data: { dom_id: "message_1" } }
-    expect(routeMessage(message, elementId, "notify")).toEqual({ type: "request_update" })
+    expect(routeMessage(message, elementId, "notify")).toEqual({ type: "destroy" })
+  })
+
+  it("ignores destroy of another record with notify strategy", () => {
+    const message = { action: "destroy", data: { dom_id: "message_2" } }
+    expect(routeMessage(message, elementId, "notify")).toEqual({ type: "ignore" })
+  })
+
+  it("ignores an update caused by its own action", () => {
+    const message = { action: "update", request_id: "req-1", data: { dom_id: "message_1" } }
+    const ownRequestIds = new Set(["req-1"])
+    expect(routeMessage(message, elementId, "push", ownRequestIds)).toEqual({ type: "ignore" })
+    expect(routeMessage(message, elementId, "notify", ownRequestIds)).toEqual({ type: "ignore" })
+  })
+
+  it("applies an update caused by someone else's action", () => {
+    const message = { action: "update", request_id: "req-2", data: { dom_id: "message_1" } }
+    expect(routeMessage(message, elementId, "push", new Set(["req-1"]))).toEqual({
+      type: "update",
+      data: { dom_id: "message_1" },
+    })
+  })
+
+  it("still destroys when its own action deleted the record", () => {
+    const message = { action: "destroy", request_id: "req-1", data: { dom_id: "message_1" } }
+    expect(routeMessage(message, elementId, "push", new Set(["req-1"]))).toEqual({ type: "destroy" })
   })
 
   it("ignores unknown actions", () => {

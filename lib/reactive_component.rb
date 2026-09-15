@@ -18,6 +18,8 @@ module ReactiveComponent
   mattr_accessor :renderer, default: nil
   # How long a live_action token minted into a page stays valid.
   mattr_accessor :action_token_ttl, default: 1.day
+  # Whether a component ignores the broadcast caused by its own live_action.
+  mattr_accessor :skip_own_broadcasts, default: false
 
   class Error < StandardError; end
 

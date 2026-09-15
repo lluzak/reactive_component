@@ -39,6 +39,17 @@ class ReactiveComponent::ChannelTest < ActionCable::Channel::TestCase
     ReactiveComponent::Channel.compress = original
   end
 
+  test 'broadcast_data tags the payload with the Turbo request id' do
+    stream = ['test_stream']
+    stream_name = Turbo::StreamsChannel.verified_stream_name(Turbo::StreamsChannel.signed_stream_name(stream))
+
+    Turbo.with_request_id('req-1') do
+      assert_broadcast_on(stream_name, { action: :update, data: { 'id' => 1 }, request_id: 'req-1' }) do
+        ReactiveComponent::Channel.broadcast_data(stream, action: :update, data: { 'id' => 1 })
+      end
+    end
+  end
+
   # --- request_update ---
 
   def alice_and_bob_messages
@@ -100,5 +111,40 @@ class ReactiveComponent::ChannelTest < ActionCable::Channel::TestCase
 
     assert data['selected']
     assert_includes data.values, 'For Alice'
+  end
+
+  test 'request_update removes a record the filter rejects' do
+    alices, = alice_and_bob_messages
+    subscribe_to_messages_of(alices.recipient)
+
+    with_filter(->(record, _params) { record.starred? }) do
+      perform :request_update, 'component' => 'MessageRowComponent', 'record_id' => alices.id,
+                               'dom_id' => 'message_row_1'
+      perform :request_update, 'component' => 'MessageRowComponent', 'dom_id' => 'message_row_1',
+                               'params' => { 'record_id' => alices.id }
+    end
+
+    assert_equal [{ 'action' => 'remove', 'dom_id' => 'message_row_1' }] * 2, transmissions
+  end
+
+  test 'request_update passes params to the filter' do
+    alices, = alice_and_bob_messages
+    subscribe_to_messages_of(alices.recipient)
+
+    with_filter(->(_record, params) { params['folder'] == 'inbox' }) do
+      perform :request_update, 'component' => 'MessageRowComponent', 'params' => { 'record_id' => alices.id, 'folder' => 'inbox' }
+    end
+
+    assert_equal 'render', transmissions.last['action']
+  end
+
+  private
+
+  def with_filter(callback)
+    original = ReactiveComponent::Channel.filter_callback
+    ReactiveComponent::Channel.filter_callback = callback
+    yield
+  ensure
+    ReactiveComponent::Channel.filter_callback = original
   end
 end

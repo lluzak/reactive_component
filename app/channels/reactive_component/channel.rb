@@ -24,16 +24,11 @@ module ReactiveComponent
       component_class, record = subscribed_component_and_record(data, params)
       return unless record
 
-      if data['record_id'].present?
-        if record_matches?(record, params)
-          transmit({ 'action' => 'render', 'data' => component_class.build_data(record) })
-        else
-          transmit({ 'action' => 'remove', 'dom_id' => data['dom_id'] })
-        end
-      else
+      if record_matches?(record, params)
         client_state = params.slice(*component_class._client_state_fields.keys.map(&:to_s))
-        result = component_class.build_data(record, **client_state.symbolize_keys)
-        transmit({ 'action' => 'render', 'data' => result })
+        transmit({ 'action' => 'render', 'data' => component_class.build_data(record, **client_state.symbolize_keys) })
+      else
+        transmit({ 'action' => 'remove', 'dom_id' => data['dom_id'] })
       end
     end
 
@@ -75,6 +70,7 @@ module ReactiveComponent
         stream_name = Turbo::StreamsChannel.verified_stream_name(signed)
 
         payload = { action: action, data: data }
+        payload[:request_id] = Turbo.current_request_id if Turbo.current_request_id
 
         if compress
           json = ActiveSupport::JSON.encode(payload)

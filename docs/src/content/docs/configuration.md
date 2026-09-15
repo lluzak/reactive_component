@@ -48,27 +48,55 @@ How long the signed `live_action` token minted into a wrapper stays valid. Defau
 ReactiveComponent.action_token_ttl = 4.hours
 ```
 
+## `ReactiveComponent.skip_own_broadcasts`
+
+Whether a component ignores the broadcast caused by its own `live_action`. Defaults to `false`: the component that ran the action applies the broadcast like every other viewer.
+
+```ruby
+ReactiveComponent.skip_own_broadcasts = true
+```
+
+When `true`, `performAction` sends Turbo's `X-Turbo-Request-Id` header. turbo-rails holds that id while the action runs, and the broadcasts sent during it carry it. The component that sent the request ignores the resulting `update`; other viewers, and other components on the same page, still apply it. Destroys are always applied.
+
+That saves a second render in push mode and a round trip in [notify mode](/reactive_component/notify-mode/). The catch: the action endpoint returns no render, so the acting component only shows what its optimistic update changed. Turn it on where actions only flip the `optimistic` field, and leave it off where an action changes more than that.
+
+The broadcast must happen during the request (an `after_commit` callback does). A broadcast from a background job carries no id and is always applied.
+
+Override it per component instance from `live_wrapper_options`:
+
+```ruby
+private
+
+def live_wrapper_options
+  { skip_own_broadcasts: true }
+end
+```
+
 ## `ReactiveComponent::Channel.filter_callback`
 
-Sets a callback for filtering whether a record matches the current subscription parameters. Defaults to `nil` (no filtering -- all records on the stream are accepted).
+Decides whether a [notify mode](/reactive_component/notify-mode/) component still belongs on the page after its record changes. Defaults to `nil` (no filtering -- every request re-renders).
 
 This is a display filter, not an authorization hook. Authorization happens before it runs: a client can only request records whose `broadcasts` stream is the signed stream it subscribed to, and only for classes that include `ReactiveComponent`. Requests for anything else are ignored.
 
 ```ruby
-ReactiveComponent::Channel.filter_callback = ->(record, params) {
-  # Only re-render if the record belongs to the requested category
-  params["category_id"].blank? || record.category_id.to_s == params["category_id"]
-}
+Rails.application.config.to_prepare do
+  ReactiveComponent::Channel.filter_callback = ->(record, params) {
+    # Only re-render if the record belongs to the requested category
+    params["category_id"].blank? || record.category_id.to_s == params["category_id"]
+  }
+end
 ```
+
+Set it inside `to_prepare`. The channel is autoloaded, so referencing it directly in an initializer raises `NameError`.
 
 The callback receives two arguments:
 
 | Argument | Description |
 |:---------|:------------|
 | `record` | The ActiveRecord model instance being broadcast |
-| `params` | A hash of subscription parameters sent by the client |
+| `params` | The `params` the component declared in `live_wrapper_options`, sent back by the client |
 
-Return `true` to allow the component to re-render with this record, or `false` to skip it. When `false` is returned on an update request, the channel transmits a `"remove"` action instead, causing the client to remove the component from the DOM.
+Return `true` to re-render the component with this record, or `false` to remove it from the page.
 
 ## Full example
 
@@ -77,9 +105,12 @@ Return `true` to allow the component to re-render with this record, or `false` t
 
 ReactiveComponent.debug = Rails.env.development?
 ReactiveComponent.renderer = ApplicationController
+ReactiveComponent.skip_own_broadcasts = false
 
-ReactiveComponent::Channel.compress = Rails.env.production?
-ReactiveComponent::Channel.filter_callback = ->(record, params) {
-  true # accept all by default
-}
+Rails.application.config.to_prepare do
+  ReactiveComponent::Channel.compress = Rails.env.production?
+  ReactiveComponent::Channel.filter_callback = ->(record, params) {
+    true # accept all by default
+  }
+end
 ```
