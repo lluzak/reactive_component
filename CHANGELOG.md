@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+- `skip_own_broadcasts` ignores updates caused by any Turbo request from the
+  page (form submissions, visits, `Turbo.fetch`), not only the component's
+  own `live_action`. It reads the request ids Turbo keeps, and `live_action`
+  requests go through `Turbo.fetch`.
+
 ## [0.8.3] - 2026-09-15
 
 ### Added

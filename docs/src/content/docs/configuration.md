@@ -50,17 +50,19 @@ ReactiveComponent.action_token_ttl = 4.hours
 
 ## `ReactiveComponent.skip_own_broadcasts`
 
-Whether a component ignores the broadcast caused by its own `live_action`. Defaults to `false`: the component that ran the action applies the broadcast like every other viewer.
+Whether a component ignores updates caused by requests from its own page. Defaults to `false`: every component applies every broadcast.
 
 ```ruby
 ReactiveComponent.skip_own_broadcasts = true
 ```
 
-When `true`, `performAction` sends Turbo's `X-Turbo-Request-Id` header. turbo-rails holds that id while the action runs, and the broadcasts sent during it carry it. The component that sent the request ignores the resulting `update`; other viewers, and other components on the same page, still apply it. Destroys are always applied.
+Turbo sends an `X-Turbo-Request-Id` header with every request it makes (visits, form submissions, frame loads, `Turbo.fetch`) and remembers the last 20 ids on the page. turbo-rails holds the id while the request runs, and ReactiveComponent broadcasts sent during it carry it. `live_action` requests go through `Turbo.fetch`, so they are tracked the same way.
 
-That saves a second render in push mode and a round trip in [notify mode](/reactive_component/notify-mode/). The catch: the action endpoint returns no render, so the acting component only shows what its optimistic update changed. Turn it on where actions only flip the `optimistic` field, and leave it off where an action changes more than that.
+When `true`, a component ignores an `update` whose id is one of its page's recent requests. Other viewers still apply it, and so do components on the same page that leave the setting off. Destroys are always applied.
 
-The broadcast must happen during the request (an `after_commit` callback does). A broadcast from a background job carries no id and is always applied.
+That saves a second render in push mode and a round trip in [notify mode](/reactive_component/notify-mode/) whenever the request's own response already shows the change: a form that redirects, or a Turbo Stream response. The catch is `live_action`: its endpoint returns no render, so a skipping component only shows what its optimistic update changed. Leave it off for components whose actions change more than the `optimistic` field.
+
+The broadcast must happen during the request (an `after_commit` callback does). A broadcast from a background job carries no id and is always applied. Without Turbo on the page, only `live_action` requests are tracked.
 
 Override it per component instance from `live_wrapper_options`:
 
