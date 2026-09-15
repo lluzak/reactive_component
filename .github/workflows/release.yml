@@ -31,9 +31,6 @@ jobs:
       - name: Build gem
         run: gem build reactive_component.gemspec
 
-      - name: Publish JS package to npm
-        run: npm publish
-
       - name: Create GitHub release
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
@@ -41,3 +38,6 @@ jobs:
           gh release create "$GITHUB_REF_NAME" "reactive_component-$VERSION.gem" --title "$GITHUB_REF_NAME" --notes-file notes.md --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}
+
+      - name: Publish JS package to npm
+        run: npm publish

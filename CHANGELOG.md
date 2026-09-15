@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.8.2] - 2026-09-15
 
 ### Added
 - The Stimulus controller is published to npm as
