@@ -41,14 +41,36 @@ You need to register the Stimulus controller in your application. In your JavaSc
 
 ```javascript
 import { application } from "controllers/application"
-import ReactiveRendererController from "reactive_component/reactive_renderer_controller"
+import ReactiveRendererController from "reactive_component/controllers/reactive_renderer_controller"
 
 application.register("reactive-renderer", ReactiveRendererController)
 ```
 
 ### Other bundlers
 
-If you are using esbuild, Vite, or another bundler, you can import the controller from the gem's `app/javascript` directory. Add the gem's JavaScript path to your bundler's configuration and import the controller as shown above.
+If you are using esbuild, Vite, Rspack, or another bundler, install the JavaScript package from npm. Install it under the `reactive_component` alias, matching the gem version. The controller imports its helpers by that name, the same way the importmap pins it:
+
+```bash
+npm install reactive_component@npm:@lluzak/reactive_component@0.8.1
+# or
+pnpm add reactive_component@npm:@lluzak/reactive_component@0.8.1
+```
+
+Either command writes the alias to your `package.json`. You can also add it by hand and run `npm install` or `pnpm install`:
+
+```json
+"dependencies": {
+  "reactive_component": "npm:@lluzak/reactive_component@0.8.1"
+}
+```
+
+No bundler configuration is needed. Register the controller as shown above:
+
+```javascript
+import ReactiveRendererController from "reactive_component/controllers/reactive_renderer_controller"
+```
+
+The package lists `@hotwired/stimulus` and `@rails/actioncable` as peer dependencies, so install them too if your app doesn't have them yet.
 
 ## 4. ActionCable
 
