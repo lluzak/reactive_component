@@ -137,3 +137,23 @@ export function strictData(data, label) {
   })
   return wrap(data, "")
 }
+
+// Ids of requests this page made. With Turbo loaded that is Turbo's own record:
+// visits, form submissions, frame loads, Turbo.fetch. Without it, only live
+// actions sent through fetchWithRequestId.
+const taggedRequestIds = new Set()
+
+export function recentRequestIds(turbo = globalThis.Turbo) {
+  return turbo?.session?.recentRequests ?? taggedRequestIds
+}
+
+// Sends a request carrying X-Turbo-Request-Id, which turbo-rails stamps on the
+// broadcasts made while it runs.
+export function fetchWithRequestId(url, options, turbo = globalThis.Turbo) {
+  if (turbo?.fetch) return turbo.fetch(url, options)
+
+  const requestId = crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)
+  taggedRequestIds.add(requestId)
+  if (taggedRequestIds.size > 20) taggedRequestIds.delete(taggedRequestIds.values().next().value)
+  return fetch(url, { ...options, headers: { ...options.headers, "X-Turbo-Request-Id": requestId } })
+}

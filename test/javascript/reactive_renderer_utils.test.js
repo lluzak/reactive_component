@@ -8,6 +8,8 @@ import {
   morphElement,
   duplicateIds,
   strictData,
+  recentRequestIds,
+  fetchWithRequestId,
 } from "reactive_component/lib/reactive_renderer_utils"
 
 describe("isBase64", () => {
@@ -306,5 +308,35 @@ describe("strictData", () => {
     expect(`${data.v1}`).toBe("3")
     expect(data.v0[0].toString).toBeTypeOf("function")
     expect(data[Symbol.toPrimitive]).toBeUndefined()
+  })
+})
+
+describe("recentRequestIds", () => {
+  it("uses the ids Turbo saved for this page's requests", () => {
+    const recentRequests = new Set(["turbo-1"])
+    expect(recentRequestIds({ session: { recentRequests } })).toBe(recentRequests)
+  })
+
+  it("falls back to ids tagged by fetchWithRequestId without Turbo", async () => {
+    const fetch = vi.fn().mockResolvedValue("ok")
+    vi.stubGlobal("fetch", fetch)
+
+    await fetchWithRequestId("/actions", { method: "POST", headers: { "X-CSRF-Token": "t" } }, undefined)
+
+    const headers = fetch.mock.calls[0][1].headers
+    expect(headers["X-CSRF-Token"]).toBe("t")
+    expect(recentRequestIds(undefined).has(headers["X-Turbo-Request-Id"])).toBe(true)
+    vi.unstubAllGlobals()
+  })
+})
+
+describe("fetchWithRequestId", () => {
+  it("sends through Turbo.fetch so Turbo saves the request id", async () => {
+    const turbo = { fetch: vi.fn().mockResolvedValue("ok") }
+    const options = { method: "POST", body: "x" }
+
+    await fetchWithRequestId("/actions", options, turbo)
+
+    expect(turbo.fetch).toHaveBeenCalledWith("/actions", options)
   })
 })

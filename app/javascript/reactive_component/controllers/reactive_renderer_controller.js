@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { createConsumer } from "@rails/actioncable"
-import { compileTemplate, decompress, morphElement, buildActionBody, routeMessage, duplicateIds, strictData } from "reactive_component/lib/reactive_renderer_utils"
+import { compileTemplate, decompress, morphElement, buildActionBody, routeMessage, duplicateIds, strictData, recentRequestIds, fetchWithRequestId } from "reactive_component/lib/reactive_renderer_utils"
 
 const consumer = createConsumer()
 const log = (...args) => {
@@ -124,7 +124,7 @@ export default class extends Controller {
   }
 
   handleMessage(message) {
-    const route = routeMessage(message, this.element.id, this.strategyValue, this.ownRequestIds)
+    const route = routeMessage(message, this.element.id, this.strategyValue, this.skipOwnBroadcastsValue ? recentRequestIds() : null)
 
     switch (route.type) {
       case "render":
@@ -204,9 +204,9 @@ export default class extends Controller {
     const formData = event.type === "submit" ? new FormData(event.target) : null
     const { body, redirect } = buildActionBody(actionName, this.actionTokenValue, event.params, formData)
 
-    fetch(this.actionUrlValue, {
+    fetchWithRequestId(this.actionUrlValue, {
       method: "POST",
-      headers: this.actionHeaders(),
+      headers: { "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content },
       body
     }).then(response => {
       if (!response.ok && rollbackData) {
@@ -226,20 +226,6 @@ export default class extends Controller {
         this.render({ ...this.lastServerData, ...this.clientState })
       }
     })
-  }
-
-  // With skipOwnBroadcasts, tags the request so the broadcast it causes can be
-  // recognised and ignored. Turbo's header name, so turbo-rails tracks the id.
-  actionHeaders() {
-    const headers = { "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content }
-    if (!this.skipOwnBroadcastsValue) return headers
-
-    const requestId = crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)
-    this.ownRequestIds ??= new Set()
-    this.ownRequestIds.add(requestId)
-    if (this.ownRequestIds.size > 20) this.ownRequestIds.delete(this.ownRequestIds.values().next().value)
-    headers["X-Turbo-Request-Id"] = requestId
-    return headers
   }
 
   setState(event) {
