@@ -52,6 +52,8 @@ If you are using esbuild, Vite, or another bundler, install the JavaScript packa
 
 ```bash
 npm install reactive_component@npm:@lluzak/reactive_component@0.8.1
+# or
+pnpm add reactive_component@npm:@lluzak/reactive_component@0.8.1
 ```
 
 Then register the controller as shown above.
