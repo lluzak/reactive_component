@@ -1,0 +1,51 @@
+<%= turbo_stream_from current_contact, :messages %>
+
+<div class="relative h-full bg-gray-100 p-6"
+     data-controller="presence board"
+     data-presence-cursors-value="true"
+     data-presence-anchor="board"
+     data-presence-stream-value="<%= ReactiveComponent.signed_stream(current_contact, :messages) %>"
+     data-action="reactive-renderer:updated->board#relocate
+                  reactive-presence:cursor->board#trackDrag
+                  reactive-presence:changed->board#showTargets">
+
+  <div class="mb-4 flex items-center gap-3">
+    <h1 class="text-lg font-bold text-gray-900">Board</h1>
+    <div id="viewers" class="flex gap-2"></div>
+    <button type="button" id="share_cursor"
+            class="rounded border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-white"
+            data-action="presence#shareCursor">Share my cursor</button>
+    <span id="following_status"></span>
+    <span class="legend" id="cursor_hint" hidden>
+      <span><b>&#9679;</b> sharing, click to follow</span>
+      <span><b>&#9678;</b> following you</span>
+      <span><b>&#9711;</b> you are following</span>
+    </span>
+  </div>
+
+  <div class="grid grid-cols-3 gap-4">
+    <% @columns.each do |label, messages| %>
+      <div class="rounded-lg bg-gray-50 p-3 ring-1 ring-gray-200"
+           data-column="<%= label %>"
+           data-action="dragover->board#over drop->board#drop dragleave->board#leave">
+        <div class="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">
+          <%= label %>
+        </div>
+        <div class="flex min-h-[8rem] flex-col gap-2" data-cards>
+          <% messages.each do |message| %>
+            <%# The shell is mine and never morphs, so the presence attribute
+                the gem stamps on it survives a re-render of the card. %>
+            <div class="card-shell cursor-grab"
+                 draggable="true"
+                 data-card-id="<%= dom_id(message, :card) %>"
+                 data-presence-field="<%= dom_id(message, :card) %>"
+                 data-action="dragstart->presence#claim dragstart->board#pick
+                              dragend->presence#release dragend->board#drophint">
+              <%= render BoardCardComponent.new(message: message) %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

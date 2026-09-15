@@ -7,10 +7,62 @@ require 'test_helper'
 # refuses. Anything that used to be a best-effort ruby2js translation is now
 # a CompileError naming the source.
 class ReactiveComponent::TranspilerTest < ActiveSupport::TestCase
-  def transpile(erb)
+  def transpile(erb, presence_fields: [])
     extraction = { expressions: {}, raw_fields: Set.new }
-    js = ReactiveComponent::Transpiler.call(ReactiveComponent::Erubi.new(erb).src, extraction: extraction)
+    js = ReactiveComponent::Transpiler.call(ReactiveComponent::Erubi.new(erb).src, extraction: extraction,
+                                                                                   presence_fields: presence_fields)
     [js, extraction]
+  end
+
+  # --- presence collections ---
+
+  test 'a presence collection loops over client data instead of a server expression' do
+    js, extraction = transpile('<% @viewers.each do |v| %><%= v.name %><% end %>', presence_fields: [:viewers])
+
+    assert_includes js, 'for (let v of viewers) {'
+    assert_empty extraction[:expressions]
+    assert_nil extraction[:collection_computed]
+  end
+
+  test 'the same loop without the declaration is evaluated on the server' do
+    js, extraction = transpile('<% @viewers.each do |v| %><%= v.name %><% end %>')
+
+    assert_includes js, 'for (let v of v0) {'
+    assert_equal({ 'v0' => '@viewers' }, extraction[:expressions])
+  end
+
+  test 'a presence loop refuses an expression the server would have to evaluate per item' do
+    error = assert_raises(ReactiveComponent::CompileError) do
+      transpile('<% @viewers.each do |v| %><%= Label::COLORS.fetch(v.color) %><% end %>',
+                presence_fields: [:viewers])
+    end
+
+    assert_match(/needs the server to evaluate it/, error.message)
+    assert_match(/Label::COLORS\.fetch\(v\.color\)/, error.message)
+  end
+
+  test 'a presence field read any other way than .each refuses to compile' do
+    [
+      '<% if @viewers.any? %>here<% end %>',
+      '<%= @viewers.size %>',
+      '<% if @viewers %>here<% end %>',
+      '<%= @viewers %>',
+      '<% @messages.each do |m| %><%= m.subject %> <%= @viewers.size %><% end %>'
+    ].each do |erb|
+      error = assert_raises(ReactiveComponent::CompileError, erb) do
+        transpile(erb, presence_fields: [:viewers])
+      end
+
+      assert_match(/reads a presence field/, error.message, erb)
+    end
+  end
+
+  test 'a presence loop still allows plain property reads on the item' do
+    js, = transpile('<% @viewers.each do |v| %><%= v.name %> is on <%= v.field %><% end %>',
+                    presence_fields: [:viewers])
+
+    assert_includes js, 'v.name'
+    assert_includes js, 'v.field'
   end
 
   test 'emits the render wrapper the compiler strips, with the data it reads as params' do

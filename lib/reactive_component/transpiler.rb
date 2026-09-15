@@ -18,11 +18,12 @@ module ReactiveComponent
   module Transpiler
     module_function
 
-    def call(erb_ruby, extraction:, nestable_checker: nil)
+    def call(erb_ruby, extraction:, nestable_checker: nil, presence_fields: [])
       result = Prism.parse(erb_ruby)
       raise CompileError, result.errors.map(&:message).join('; ') if result.failure?
 
-      Emitter.new(extraction: extraction, nestable_checker: nestable_checker).render(result.value)
+      Emitter.new(extraction: extraction, nestable_checker: nestable_checker,
+                  presence_fields: presence_fields).render(result.value)
     end
 
     class Emitter
@@ -33,11 +34,12 @@ module ReactiveComponent
       BUFFERS = %i[_buf _erbout].freeze
       TO_S = %i[to_s toString].freeze
 
-      Block = Struct.new(:var, :computed, :collection_key)
+      Block = Struct.new(:var, :computed, :collection_key, :presence)
 
-      def initialize(extraction:, nestable_checker:)
+      def initialize(extraction:, nestable_checker:, presence_fields: [])
         @extraction = extraction
         @nestable_checker = nestable_checker
+        @presence_fields = presence_fields.to_set(&:to_sym)
         @expressions = {}
         @raw_fields = Set.new
         @source_to_key = {}
@@ -117,19 +119,55 @@ module ReactiveComponent
         var = block_var(node.block)
         receiver = node.receiver
         collection_key = nil
-        collection = if server_evaluable?(receiver) && !contains_lvar?(receiver)
+        presence = presence_collection?(receiver)
+
+        collection = if !presence && server_evaluable?(receiver) && !contains_lvar?(receiver)
                        collection_key = record_collection_extraction(receiver)
-                     elsif in_block? && contains_block_var?(receiver)
+                     elsif !presence && in_block? && contains_block_var?(receiver)
                        raise CompileError,
                              "nested loops are not supported (`#{receiver.slice}.each` inside `#{current_block.var}`)"
+                     elsif presence
+                       presence_data_key(receiver)
                      else
                        expr(receiver)
                      end
 
-        @blocks.push(Block.new(var, {}, collection_key))
+        @blocks.push(Block.new(var, {}, collection_key, presence))
         body = node.block.body ? stmt(node.block.body) : ''
         flush_block_computed(@blocks.pop)
         "for (let #{var} of #{collection}) {\n#{indent(body)}\n}"
+      end
+
+      def presence_collection?(node)
+        node.is_a?(Prism::InstanceVariableReadNode) &&
+          @presence_fields.include?(node.name.to_s.delete_prefix('@').to_sym)
+      end
+
+      def presence_data_key(node)
+        name = node.name.to_s.delete_prefix('@')
+        @params << name
+        name
+      end
+
+      def contains_presence_field?(node)
+        return false unless node.is_a?(Prism::Node)
+        return true if presence_collection?(node)
+
+        node.compact_child_nodes.any? { |child| contains_presence_field?(child) }
+      end
+
+      # A presence field is filled in by the browser, and `.each` over it is the
+      # one read that compiles to the client. Anything else — `.size`, `.any?`,
+      # a bare `if` — would be evaluated on the server against an empty list and
+      # shipped as a constant, so it would render once and never change while
+      # nothing complained. Refuse it at compile time instead.
+      def refuse_presence_read!(node)
+        return unless contains_presence_field?(node)
+
+        raise CompileError,
+              "`#{node.slice}` reads a presence field, which the browser fills in and the server " \
+              'never sees, so it would render once and never change. Only `.each` over a ' \
+              'presence field compiles; read properties of its loop variable instead.'
       end
 
       def block_var(block)
@@ -178,6 +216,8 @@ module ReactiveComponent
         return nested if nested
 
         if in_block? && contains_block_var?(node)
+          return emit_append("escapeHTML(#{client_property(node)})") if in_presence_block?
+
           key = record_block_computed(node, raw: html_producing?(node))
           return emit_append(html_producing?(node) ? item_key(key) : "String(#{item_key(key)})")
         end
@@ -191,7 +231,11 @@ module ReactiveComponent
 
       # `raw(expr)` — an explicit declaration of server-computed HTML
       def raw_output(inner)
-        return emit_append(item_key(record_block_computed(inner, raw: true))) if in_block? && contains_block_var?(inner)
+        if in_block? && contains_block_var?(inner)
+          raise CompileError, '`raw` needs the server, which never sees a presence item' if in_presence_block?
+
+          return emit_append(item_key(record_block_computed(inner, raw: true)))
+        end
         return emit_append(extract(inner, raw: true)) unless contains_lvar?(inner)
 
         raise CompileError, "`raw(#{inner.slice})` depends on a local the server cannot see"
@@ -352,7 +396,11 @@ module ReactiveComponent
       end
 
       def lifted(node)
-        return item_key(record_block_computed(node, typed: true)) if in_block? && contains_block_var?(node)
+        if in_block? && contains_block_var?(node)
+          return client_property(node) if in_presence_block?
+
+          return item_key(record_block_computed(node, typed: true))
+        end
 
         extract(node)
       end
@@ -407,6 +455,7 @@ module ReactiveComponent
       # --- identifiers ---
 
       def client_ivar(node)
+        refuse_presence_read!(node)
         name = node.name.to_s.delete_prefix('@')
         @params << name
         name
@@ -424,12 +473,32 @@ module ReactiveComponent
       end
 
       def item_key(key) = "#{current_block.var}.#{key}"
+      def in_presence_block? = in_block? && current_block.presence
+
+      # A presence collection comes from the browser's roster, so the server
+      # never sees its items and cannot lift anything out of them. Only a plain
+      # property read off the loop variable survives to the client; anything
+      # else has to fail at boot naming itself, rather than render undefined.
+      def client_property(node)
+        return node.name.to_s if node.is_a?(Prism::LocalVariableReadNode)
+
+        unless node.is_a?(Prism::CallNode) && node.receiver && node.arguments.nil? &&
+               node.block.nil? && node.name.to_s.match?(IDENT)
+          raise CompileError,
+                "`#{node.slice}` needs the server to evaluate it, but `#{current_block.var}` comes from " \
+                'the browser and the server never sees it. Read a plain property instead.'
+        end
+
+        "#{client_property(node.receiver)}.#{node.name}"
+      end
+
       def in_block? = !@blocks.empty?
       def current_block = @blocks.last
 
       # --- recording (the extraction contract the DataEvaluator consumes) ---
 
       def extract(node, raw: false)
+        refuse_presence_read!(node)
         key = record_extraction(source_of(node), raw: raw)
         @params << key
         key
@@ -448,6 +517,7 @@ module ReactiveComponent
 
       # Collection: always unique — each loop gets its own key.
       def record_collection_extraction(node)
+        refuse_presence_read!(node)
         key = next_key
         @expressions[key] = source_of(node)
         @params << key
@@ -455,6 +525,7 @@ module ReactiveComponent
       end
 
       def record_block_computed(node, raw: false, typed: false)
+        refuse_presence_read!(node)
         source = source_of(node)
         computed = current_block.computed
         existing = computed.find { |_, info| info[:source] == source && info.fetch(:typed, false) == typed }

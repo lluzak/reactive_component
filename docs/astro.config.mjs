@@ -41,6 +41,7 @@ export default defineConfig({
         { label: 'Nested Components', link: '/nested-components/' },
         { label: 'Collections & Loops', link: '/collections/' },
         { label: 'Derived Entities', link: '/derived-entities/' },
+        { label: 'Presence', link: '/presence/' },
         { label: 'Configuration', link: '/configuration/' },
         { label: 'Troubleshooting', link: '/troubleshooting/' },
       ],

@@ -1,5 +1,6 @@
 Rails.application.routes.draw do
   mount ReactiveComponent::Engine => "/reactive_component"
+  resource :board, only: :show
   resources :messages, only: [:index, :show] do
     member do
       post :toggle_star

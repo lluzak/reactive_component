@@ -1,5 +1,34 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Presence: `ReactiveComponent.presence_identity` names the viewer behind a
+  connection, and a `presence` Stimulus controller keeps a self-expiring roster
+  of everyone on a stream. It stamps `data-presence-here` and
+  `data-presence-busy` rather than rendering, so styling stays with the host
+  app. No Redis set, no roster table, no sweeper job.
+- `ReactiveComponent.signed_stream` mints the stream name a `presence`
+  controller needs on a plain element.
+- `ReactiveComponent.presence_state_limit` caps client-authored presence state.
+- A viewer answers anyone it has not seen before, so a newcomer appears at once
+  rather than waiting out a heartbeat. One reply per arrival, debounced.
+- Roster entries expire after 90s rather than 30s, and a tab announces as soon
+  as it is foregrounded. Browsers throttle hidden-tab timers to about once a
+  minute, so a shorter expiry dropped anyone who switched tabs.
+- `presence :viewers` declares an ivar the browser fills from its roster, so a
+  template can render who else is here. The server renders it empty; only plain
+  property reads on the loop item compile, and anything needing per-item server
+  evaluation raises `CompileError` at boot.
+- A `reactive-presence:cursor` event carries each painted cursor position in
+  the page's own coordinates, so an app can hang a drag preview or a viewport
+  follow off somebody else's pointer.
+- Live cursors, opt-in on both ends. A sharer publishes to a stream named for
+  them and a watcher subscribes to one person, so frames are never sent to
+  anyone who did not ask. A sharer nobody watches does not sample the mouse at
+  all. Coordinates are a fraction of a named anchor rather than page pixels, so
+  they survive a different viewport width or scroll offset.
+
 ## [0.8.1] - 2026-09-11
 
 ### Added
