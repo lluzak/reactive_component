@@ -34,6 +34,7 @@ module ReactiveComponent
     class_attribute :_broadcast_config, instance_writer: false
     class_attribute :_client_state_fields, instance_writer: false, default: {}
     class_attribute :_subscribed_events, instance_writer: false, default: %i[create update destroy]
+    class_attribute :_subscribed_fields, instance_writer: false, default: nil
   end
 
   def render_in(view_context, &)
@@ -141,10 +142,11 @@ module ReactiveComponent
   end
 
   class_methods do
-    def subscribes_to(attr_name, class_name: nil, only: %i[create update destroy])
+    def subscribes_to(attr_name, class_name: nil, only: %i[create update destroy], fields: nil)
       self._live_model_attr = attr_name.to_sym
       self._live_model_class_name = class_name || attr_name.to_s.classify
       self._subscribed_events = Array(only).map(&:to_sym)
+      self._subscribed_fields = fields && Array(fields).map(&:to_s)
 
       component_class = self
 

@@ -36,8 +36,18 @@ module ReactiveComponent
 
     private
 
-    def _broadcast_reactive_create  = broadcast_reactive(:create)
-    def _broadcast_reactive_update  = broadcast_reactive(:update)
+    def _broadcast_reactive_create = broadcast_reactive(:create)
+
+    # Skips components subscribed to `fields:` when none of them changed.
+    def _broadcast_reactive_update
+      reactive_component_classes.each do |klass|
+        fields = klass._subscribed_fields
+        next if fields && !saved_changes.keys.intersect?(fields)
+
+        ReactiveComponent.broadcast_for(klass, self, action: :update)
+      end
+    end
+
     def _broadcast_reactive_destroy = broadcast_reactive(:destroy)
   end
 end
