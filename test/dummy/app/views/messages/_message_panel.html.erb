@@ -10,7 +10,7 @@
     </div>
     <div class="flex-1 overflow-y-auto scrollbar-thin" id="message_items">
       <% @messages.each do |message| %>
-        <%= render MessageRowComponent.new(message: message) %>
+        <%= render MessageRowComponent.new(message: message, folder: @folder) %>
       <% end %>
     </div>
   </div>

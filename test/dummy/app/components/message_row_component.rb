@@ -9,12 +9,19 @@ class MessageRowComponent < ApplicationComponent
   live_action :toggle_star
   client_state :selected, default: false
 
-  def initialize(message:, selected: false)
+  def initialize(message:, selected: false, folder: nil)
     @message = message
     @selected = selected
+    @folder = folder
   end
 
   private
+
+  def live_wrapper_options
+    return {} unless @folder == "starred"
+
+    { strategy: :notify, params: { folder: @folder } }
+  end
 
   def toggle_star
     @message.toggle_starred!
