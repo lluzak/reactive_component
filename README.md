@@ -62,6 +62,8 @@ Mount the engine in your routes:
 mount ReactiveComponent::Engine => "/reactive_component"
 ```
 
+Using esbuild, Vite, or another bundler instead of importmap? The Stimulus controller is also published to npm as `@lluzak/reactive_component`, see [Other bundlers](https://lluzak.github.io/reactive_component/installation.html#other-bundlers).
+
 See the [Installation guide](https://lluzak.github.io/reactive_component/installation.html) for full setup instructions.
 
 ## Features
@@ -99,7 +101,15 @@ See the [full architecture guide](https://lluzak.github.io/reactive_component/ho
 ```bash
 bin/setup
 bundle exec rake test
+npm run test:js
 ```
+
+### Releasing
+
+1. Bump `lib/reactive_component/version.rb` and `package.json` to the same version, and date its `CHANGELOG.md` heading.
+2. Commit `Release vX.Y.Z` on `main`, tag `vX.Y.Z`, and push both.
+
+The tag runs the [Release workflow](.github/workflows/release.yml): it checks both versions match the tag, builds the gem, publishes the JS package to npm, and creates the GitHub release with the changelog section and the `.gem` attached. Push the gem to RubyGems yourself with `gem push reactive_component-X.Y.Z.gem`.
 
 ## Contributing
 
