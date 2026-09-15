@@ -1,5 +1,24 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Notify mode guide. A notify component re-renders from the server instead of
+  the broadcast payload, and `filter_callback` can remove it from a filtered
+  list. See Notify Mode.
+- Notify wrappers fill in the component name and record id, so
+  `live_wrapper_options` only needs `strategy: :notify`.
+
+### Fixed
+- Notify components only react to changes to their own record. Before, every
+  notify component on a shared stream requested a re-render on any change.
+- A destroyed record's notify component is removed instead of staying on the
+  page.
+- `filter_callback` runs on every notify request, not only for components
+  that declare client state.
+- The configuration docs set `Channel` options inside `to_prepare`; the
+  previous initializer example raised `NameError`.
+
 ## [0.8.1] - 2026-09-11
 
 ### Added
