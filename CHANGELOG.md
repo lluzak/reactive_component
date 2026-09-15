@@ -4,8 +4,9 @@
 
 ### Added
 - The Stimulus controller is published to npm as
-  `@lluzak/reactive_component` for apps using esbuild, Vite, or another
-  bundler. See Other bundlers in the Installation guide.
+  `@lluzak/reactive_component` for apps using esbuild, Vite, Rspack, or
+  another bundler. Install it under the `reactive_component` alias. See
+  Other bundlers in the Installation guide.
 - Pushing a `vX.Y.Z` tag builds the gem, publishes the JS package, and
   creates the GitHub release.
 
