@@ -48,6 +48,30 @@ How long the signed `live_action` token minted into a wrapper stays valid. Defau
 ReactiveComponent.action_token_ttl = 4.hours
 ```
 
+## `ReactiveComponent.skip_own_broadcasts`
+
+Whether a component ignores the broadcast caused by its own `live_action`. Defaults to `false`: the component that ran the action applies the broadcast like every other viewer.
+
+```ruby
+ReactiveComponent.skip_own_broadcasts = true
+```
+
+When `true`, `performAction` sends Turbo's `X-Turbo-Request-Id` header. turbo-rails holds that id while the action runs, and the broadcasts sent during it carry it. The component that sent the request ignores the resulting `update`; other viewers, and other components on the same page, still apply it. Destroys are always applied.
+
+That saves a second render in push mode and a round trip in [notify mode](/reactive_component/notify-mode/). The catch: the action endpoint returns no render, so the acting component only shows what its optimistic update changed. Turn it on where actions only flip the `optimistic` field, and leave it off where an action changes more than that.
+
+The broadcast must happen during the request (an `after_commit` callback does). A broadcast from a background job carries no id and is always applied.
+
+Override it per component instance from `live_wrapper_options`:
+
+```ruby
+private
+
+def live_wrapper_options
+  { skip_own_broadcasts: true }
+end
+```
+
 ## `ReactiveComponent::Channel.filter_callback`
 
 Decides whether a [notify mode](/reactive_component/notify-mode/) component still belongs on the page after its record changes. Defaults to `nil` (no filtering -- every request re-renders).
@@ -81,6 +105,7 @@ Return `true` to re-render the component with this record, or `false` to remove 
 
 ReactiveComponent.debug = Rails.env.development?
 ReactiveComponent.renderer = ApplicationController
+ReactiveComponent.skip_own_broadcasts = false
 
 Rails.application.config.to_prepare do
   ReactiveComponent::Channel.compress = Rails.env.production?

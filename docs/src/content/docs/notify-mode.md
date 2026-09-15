@@ -51,6 +51,7 @@ end
 | `strategy` | `:notify` to turn notify mode on. Anything else, or no key, keeps push. |
 | `params` | A hash sent back to the server with every re-render request and passed to the filter. |
 | `component_name` | The component class the server renders. Defaults to the component's own class. |
+| `skip_own_broadcasts` | Skip the re-render request after this component's own `live_action`. Defaults to [`ReactiveComponent.skip_own_broadcasts`](/reactive_component/configuration/#reactivecomponentskip_own_broadcasts). |
 
 The component's record id is added to `params` for you.
 
