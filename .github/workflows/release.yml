@@ -1,0 +1,43 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write # npm trusted publishing
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Check tag matches gem and package versions
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          test "$(ruby -r ./lib/reactive_component/version -e 'print ReactiveComponent::VERSION')" = "$VERSION"
+          test "$(node -p 'require("./package.json").version')" = "$VERSION"
+
+      - name: Build gem
+        run: gem build reactive_component.gemspec
+
+      - name: Create GitHub release
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          awk -v v="## [$VERSION]" 'index($0, v) == 1 {on=1; next} /^## \[/ {on=0} on' CHANGELOG.md > notes.md
+          gh release create "$GITHUB_REF_NAME" "reactive_component-$VERSION.gem" --title "$GITHUB_REF_NAME" --notes-file notes.md --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Publish JS package to npm
+        run: npm publish

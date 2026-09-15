@@ -1,9 +1,8 @@
 {
-  "name": "reactive_component",
-  "version": "0.8.1",
+  "name": "@lluzak/reactive_component",
+  "version": "0.8.2",
   "description": "Stimulus controller and renderer for the reactive_component Rails gem",
   "license": "MIT",
-  "repository": "github:lluzak/reactive_component",
   "type": "module",
   "files": [
     "app/javascript"
@@ -23,5 +22,12 @@
   "devDependencies": {
     "jsdom": "^29.0.0",
     "vitest": "^3.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lluzak/reactive_component.git"
   }
 }
