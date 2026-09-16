@@ -15,6 +15,16 @@ module ReactiveComponent
       ReactiveComponent::DataEvaluator.finalize!
     end
 
+    # A component wires its model up when the class loads, so an app that does
+    # not eager load (development, test) would broadcast nothing from a process
+    # that has not rendered that component yet: a job, or a turbo-stream
+    # request. Load the subscribing components on boot and after each reload.
+    initializer 'reactive_component.load_subscribers' do |app|
+      next if app.config.eager_load
+
+      app.config.to_prepare { ReactiveComponent::SubscriberLoader.load_all }
+    end
+
     initializer 'reactive_component.importmap', before: 'importmap' do |app|
       if defined?(Importmap)
         app.config.importmap.paths <<
