@@ -9,7 +9,7 @@ Reactive server-rendered components for Rails via ActionCable. Build [ViewCompon
 
 ReactiveComponent compiles your ERB templates to JavaScript at boot time and uses ActionCable to push updates in real time.
 
-**[Documentation](https://lluzak.github.io/reactive_component/)** | **[Quick Start](https://lluzak.github.io/reactive_component/quick-start.html)** | **[DSL Reference](https://lluzak.github.io/reactive_component/dsl-reference.html)**
+**[Documentation](https://lluzak.github.io/reactive_component/)** | **[Quick Start](https://lluzak.github.io/reactive_component/quick-start/)** | **[DSL Reference](https://lluzak.github.io/reactive_component/dsl-reference/)**
 
 ## Quick Example
 
@@ -68,9 +68,9 @@ Using esbuild, Vite, Rspack, or another bundler instead of importmap? Install th
 pnpm add reactive_component@npm:@lluzak/reactive_component
 ```
 
-See [Other bundlers](https://lluzak.github.io/reactive_component/installation.html#other-bundlers) for details.
+See [Other bundlers](https://lluzak.github.io/reactive_component/installation/#other-bundlers) for details.
 
-See the [Installation guide](https://lluzak.github.io/reactive_component/installation.html) for full setup instructions.
+See the [Installation guide](https://lluzak.github.io/reactive_component/installation/) for full setup instructions.
 
 ## Features
 
@@ -92,15 +92,15 @@ ReactiveComponent compiles your ERB templates into JavaScript render functions a
 
 No full page reload. No custom JavaScript. Your existing ERB templates are the single source of truth.
 
-See the [full architecture guide](https://lluzak.github.io/reactive_component/how-it-works.html) for details.
+See the [full architecture guide](https://lluzak.github.io/reactive_component/how-it-works/) for details.
 
 ## Advanced Features
 
-- **Nested components** -- Render reactive components inside other reactive components. [Guide](https://lluzak.github.io/reactive_component/nested-components.html)
-- **Collection loops** -- Use `.each` in templates with automatic per-item data extraction. [Guide](https://lluzak.github.io/reactive_component/collections.html)
-- **Broadcast compression** -- Gzip-compress ActionCable payloads for large components. [Configuration](https://lluzak.github.io/reactive_component/configuration.html)
-- **Notify mode** -- Re-render from the server on change, and drop rows that no longer match a filtered list. [Guide](https://lluzak.github.io/reactive_component/notify-mode.html)
-- **Derived entities** -- Subscribe a component to an object built from several models. [Guide](https://lluzak.github.io/reactive_component/derived-entities.html)
+- **Nested components** -- Render reactive components inside other reactive components. [Guide](https://lluzak.github.io/reactive_component/nested-components/)
+- **Collection loops** -- Use `.each` in templates with automatic per-item data extraction. [Guide](https://lluzak.github.io/reactive_component/collections/)
+- **Broadcast compression** -- Gzip-compress ActionCable payloads for large components. [Configuration](https://lluzak.github.io/reactive_component/configuration/)
+- **Notify mode** -- Re-render from the server on change, and drop rows that no longer match a filtered list. [Guide](https://lluzak.github.io/reactive_component/notify-mode/)
+- **Derived entities** -- Subscribe a component to an object built from several models. [Guide](https://lluzak.github.io/reactive_component/derived-entities/)
 
 ## Development
 
