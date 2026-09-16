@@ -95,6 +95,11 @@
         background: #fff;
       }
 
+      /* Shown until somebody else is on the stream. The gem stamps
+         data-presence-here on the controller element the moment one is. */
+      [data-presence-here] [data-alone] { display: none; }
+      [data-alone] { color: #6b7280; font-size: 11px; }
+
       .legend { display: inline-flex; gap: 10px; color: #6b7280; font-size: 10px; }
       .legend b { color: #374151; font-weight: 600; }
       .following-pill { background: #111827; }
@@ -194,9 +199,7 @@
            class="<%= viewer_id.to_s == contact.id.to_s ? "text-white font-semibold" : "hover:text-gray-200" %>"
            data-viewer-pick="<%= contact.id %>"><%= contact.name %></a>
       <% end %>
-      <% if viewer.blank? %>
-        <span class="text-amber-400">nobody yet — presence stays off until you pick someone</span>
-      <% end %>
+      <span class="text-gray-500">open a second window and pick a different name to see presence</span>
     </div>
 
     <%= yield %>

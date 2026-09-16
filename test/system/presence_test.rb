@@ -130,14 +130,17 @@ class PresenceTest < SystemTestCase
     end
   end
 
-  # The demo's own wiring, which broke three times: identity in a cookie was
+  # The demo's own wiring, which broke four times: identity in a cookie was
   # shared between tabs, then a missing parameter looked identical to presence
-  # being broken, then Turbo kept the socket its consumer was built with.
-  test 'a viewer who has not been named is told presence is off' do
+  # being broken, then Turbo kept the socket its consumer was built with, then
+  # nobody arriving normally was ever named at all.
+  test 'a viewer who has not been named gets one' do
     visit '/board'
 
-    assert_text 'presence stays off'
-    assert_no_selector '[data-presence-here]'
+    assert_current_path(/\?as=\d+/)
+
+    assert_selector '[data-viewer-pick]', minimum: 3
+    assert_selector '[data-alone]'
   end
 
   test 'naming a viewer is a full page load, so the socket is rebuilt' do
