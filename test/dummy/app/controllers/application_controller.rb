@@ -1,6 +1,11 @@
 class ApplicationController < ActionController::Base
   helper_method :current_contact, :viewer, :viewer_id
 
+  # Nobody arrives with `?as=` on their own, and an unnamed viewer gets no
+  # presence at all, which looks exactly like presence being broken. Name one.
+  before_action :ensure_viewer
+
+
   private
 
   # The mailbox being looked at. Everyone shares Alice's inbox here.
@@ -23,5 +28,11 @@ class ApplicationController < ActionController::Base
   # to name one.
   def default_url_options
     viewer_id ? { as: viewer_id } : {}
+  end
+
+  def ensure_viewer
+    return if viewer_id.present? || !request.get? || request.xhr?
+
+    redirect_to url_for(params.permit!.merge(as: Contact.order(:id).first&.id))
   end
 end
