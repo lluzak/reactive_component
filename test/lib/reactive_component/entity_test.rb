@@ -114,6 +114,12 @@ class ReactiveComponent::EntityKeyTest < ActiveSupport::TestCase
     assert_equal '1-2', DueCount.find_by(id: '1-2').id
   end
 
+  test 'a keyed entity round trips through a global id' do
+    located = GlobalID::Locator.locate(DueCount.new(company_id: 1, user_id: 2).to_gid_param)
+
+    assert_equal '1-2', located.id
+  end
+
   test 'a key of the wrong arity resolves to nil instead of raising' do
     assert_nil DueCount.find('1')
     assert_nil DueCount.find_by(id: '1-2-3')
@@ -168,5 +174,27 @@ class ReactiveComponent::EntityFanOutTest < ActiveSupport::TestCase
     calls = []
     ReactiveComponent.stub(:broadcast_for, ->(_klass, _record, action:) { calls << action }, &)
     calls
+  end
+end
+
+class ReactiveComponent::EntityGlobalIdTest < ActiveSupport::TestCase
+  setup do
+    @message = Message.create!(subject: 'Test', body: 'Hello',
+                               sender: Contact.create!(name: 'Alice', email: 'alice@example.com'),
+                               recipient: Contact.create!(name: 'Bob', email: 'bob@example.com'))
+    @summary = MessageSummary.new(message: @message)
+  end
+
+  test 'an entity locates through a signed global id scoped to this gem' do
+    sgid = @summary.to_sgid_param(for: 'reactive_component')
+
+    assert_equal @message, GlobalID::Locator.locate_signed(sgid, for: 'reactive_component').message
+    assert_nil GlobalID::Locator.locate_signed(sgid, for: 'something_else')
+  end
+
+  test 'a stream keyed on an entity uses its gid param' do
+    signed = Turbo::StreamsChannel.signed_stream_name(@summary)
+
+    assert_equal @summary.to_gid_param, Turbo::StreamsChannel.verified_stream_name(signed)
   end
 end

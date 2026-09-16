@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'active_model'
+require 'global_id'
 
 module ReactiveComponent
   # A derived entity: a plain object built on top of several ActiveRecord
@@ -37,6 +38,7 @@ module ReactiveComponent
     extend ActiveSupport::Concern
     include ActiveModel::Model
     include Broadcastable
+    include GlobalID::Identification
 
     included do
       class_attribute :root_name, instance_writer: false
@@ -44,8 +46,9 @@ module ReactiveComponent
 
     def persisted? = true
 
-    # Default stream when the component declares no `broadcasts stream:`.
-    # A bare id would collide with every other entity sharing it.
+    # Turbo's `stream_name_from` prefers `to_gid_param`, so an entity names its
+    # own stream. `to_param` stays as the fallback for when `GlobalID.app`
+    # isn't set: a bare id would collide with every other entity sharing it.
     def to_param = "#{self.class.model_name.param_key}/#{id}"
 
     class_methods do

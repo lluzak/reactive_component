@@ -2,6 +2,11 @@
 
 # This file should be required from the main lib/reactive_component.rb module file.
 
+# Entities and signed stream ids are GlobalIDs. ActiveJob pulls this railtie in
+# for its own arguments; an app without ActiveJob would otherwise have no
+# `GlobalID.app` and could not create one.
+require 'global_id/railtie'
+
 module ReactiveComponent
   class Engine < ::Rails::Engine
     isolate_namespace ReactiveComponent
