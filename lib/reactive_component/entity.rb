@@ -25,6 +25,8 @@ module ReactiveComponent
   #     include ReactiveComponent::Entity
   #
   #     key :company_id, :user_id
+  #     rebuilds_on Task, fields: %i[due_on],
+  #                       entities: ->(task) { new(company_id: task.company_id, user_id: task.assignee_id) }
   #   end
   #
   #   class OrderSummaryComponent < ApplicationComponent
@@ -84,22 +86,32 @@ module ReactiveComponent
       # on `model` pointing at the root; omit it when `model` is the root.
       # `fields:` narrows updates to the listed columns; create and destroy
       # always count.
-      def rebuilds_on(model, via: nil, fields: nil)
+      # `entities:` is the alternative to `via:` when one commit touches more
+      # than one entity, or when the entity is not reachable through a single
+      # foreign key: it takes the record and returns the entities to rebuild.
+      def rebuilds_on(model, via: nil, fields: nil, entities: nil)
+        raise ArgumentError, 'rebuilds_on takes either via: or entities:, not both' if via && entities
+
         entity = self
         fields = fields&.map(&:to_s)
 
-        model.after_commit { entity.rebuild_from(self, via: via, fields: fields) }
+        model.after_commit { entity.rebuild_from(self, via: via, fields: fields, entities: entities) }
       end
 
-      def rebuild_from(record, via:, fields:)
+      def rebuild_from(record, via:, fields:, entities: nil)
         action = commit_action(record)
-        return if action == :update && fields && !record.saved_changes.keys.intersect?(fields)
+        return if unlisted_change?(record, action, fields)
+        return Array(entities.call(record)).each { |e| e.broadcast_reactive(:update) } if entities
         return find_by(id: record.public_send(via))&.broadcast_reactive(:update) if via
 
         new(root_name => record).broadcast_reactive(action)
       end
 
       private
+
+      def unlisted_change?(record, action, fields)
+        action == :update && fields && !record.saved_changes.keys.intersect?(fields)
+      end
 
       def commit_action(record)
         return :destroy if record.destroyed?

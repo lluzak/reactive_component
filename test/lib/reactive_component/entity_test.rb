@@ -120,3 +120,53 @@ class ReactiveComponent::EntityKeyTest < ActiveSupport::TestCase
     assert_nil DueCount.find_by(id: nil)
   end
 end
+
+class ReactiveComponent::EntityFanOutTest < ActiveSupport::TestCase
+  FakeComponent = Class.new
+
+  class DueCount
+    include ReactiveComponent::Entity
+
+    key :label_id
+  end
+
+  setup do
+    DueCount.register_reactive_component(FakeComponent)
+    @message = Message.create!(subject: 'Test', body: 'Hello',
+                               sender: Contact.create!(name: 'Alice', email: 'alice@example.com'),
+                               recipient: Contact.create!(name: 'Bob', email: 'bob@example.com'))
+  end
+
+  test 'entities: rebuilds every entity the lambda returns' do
+    fan_out = ->(message) { [DueCount.new(label_id: message.sender_id), DueCount.new(label_id: message.recipient_id)] }
+
+    assert_equal(%i[update update], broadcasts_from { DueCount.rebuild_from(@message, via: nil, fields: nil, entities: fan_out) })
+  end
+
+  test 'entities: takes a single entity or none at all' do
+    one  = ->(message) { DueCount.new(label_id: message.sender_id) }
+    none = ->(_message) {}
+
+    assert_equal(%i[update], broadcasts_from { DueCount.rebuild_from(@message, via: nil, fields: nil, entities: one) })
+    assert_empty(broadcasts_from { DueCount.rebuild_from(@message, via: nil, fields: nil, entities: none) })
+  end
+
+  test 'entities: still honours fields:' do
+    fan_out = ->(message) { DueCount.new(label_id: message.sender_id) }
+    @message.update!(body: 'Changed')
+
+    assert_empty(broadcasts_from { DueCount.rebuild_from(@message, via: nil, fields: ['subject'], entities: fan_out) })
+  end
+
+  test 'via: and entities: together are a declaration error' do
+    assert_raises(ArgumentError) { DueCount.rebuilds_on(Message, via: :label_id, entities: ->(_) {}) }
+  end
+
+  private
+
+  def broadcasts_from(&)
+    calls = []
+    ReactiveComponent.stub(:broadcast_for, ->(_klass, _record, action:) { calls << action }, &)
+    calls
+  end
+end
