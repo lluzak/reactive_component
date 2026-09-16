@@ -6,6 +6,7 @@ import { toAnchorPoint, fromAnchorPoint, findAnchor, coalesce } from "reactive_c
 const HEARTBEAT = 10000
 const SWEEP = 1000
 const SAMPLED_EVENTS = ["mousemove", "dragover"]
+const GREET_WINDOW = 500
 
 // Browsers throttle timers in a hidden tab to roughly once a minute, so a
 // heartbeat from a backgrounded viewer can be a minute late. The expiry has to
@@ -30,6 +31,7 @@ export default class extends Controller {
     this.watching = null
     this.ghosts = new Map()
     this.queued = new Map()
+    this.greetedAt = 0
 
     subscribe(this.streamValue, this)
 
@@ -52,7 +54,6 @@ export default class extends Controller {
   disconnect() {
     clearInterval(this.beat)
     clearInterval(this.sweep)
-    clearTimeout(this.greeting)
     document.removeEventListener("visibilitychange", this.onVisible)
     this.element.removeEventListener("reactive-presence:request", this.onRequest)
     this.stopSampling()
@@ -103,9 +104,8 @@ export default class extends Controller {
         const known = this.roster.entries.has(message.user.id)
         if (this.roster.apply(message.user, message.state)) this.changed()
         // A stranger has to be answered, or they wait out a heartbeat to learn
-        // this viewer exists — and a heartbeat from a hidden tab can be a
-        // minute late. One reply per arrival, not per beat, so this costs n
-        // frames when somebody joins rather than n² forever.
+        // this viewer exists, and a heartbeat from a hidden tab can be a minute
+        // late.
         if (!known && message.user.id !== this.roster.selfId) this.greet()
         break
       }
@@ -143,16 +143,20 @@ export default class extends Controller {
     this.changed()
   }
 
-  // Debounced and jittered: several people arriving at once should produce one
-  // reply from this viewer, and a room full of viewers should not answer a
-  // newcomer in the same millisecond.
+  // Answered on the spot, never on a timer: the viewer who has to reply is
+  // often the one in the background tab, and a background tab's timers are
+  // throttled to about once a minute. A newcomer would sit there seeing an
+  // empty room. The window collapses a burst of arrivals into one reply.
+  //
+  // ponytail: one immediate reply per viewer per burst. A hundred viewers all
+  // answering one arrival at once is the point at which this wants a
+  // server-side roster instead.
   greet() {
-    if (this.greeting) return
+    const now = Date.now()
+    if (now - this.greetedAt < GREET_WINDOW) return
 
-    this.greeting = setTimeout(() => {
-      this.greeting = null
-      this.announce()
-    }, 100 + Math.random() * 400)
+    this.greetedAt = now
+    this.announce()
   }
 
   announce() {
