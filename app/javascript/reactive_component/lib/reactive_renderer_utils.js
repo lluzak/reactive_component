@@ -34,6 +34,21 @@ export async function decompress(base64) {
   return new Response(stream).json()
 }
 
+// Idiomorph's callbacks, open for the app to hook into: push an object with any
+// of them (a flash on changed numbers, a sound, a counter) and it runs for every
+// component. A hook returning false cancels that node, as Idiomorph expects.
+export const morphHooks = []
+
+const HOOK_NAMES = [
+  'beforeNodeAdded', 'afterNodeAdded', 'beforeNodeMorphed', 'afterNodeMorphed',
+  'beforeNodeRemoved', 'afterNodeRemoved', 'beforeAttributeUpdated'
+]
+
+const morphCallbacks = Object.fromEntries(HOOK_NAMES.map(name => [
+  name,
+  (...args) => morphHooks.reduce((ok, hook) => (hook[name]?.(...args) === false ? false : ok), true)
+]))
+
 export function morphElement(element, newHtml) {
   const parser = new DOMParser()
   const doc = parser.parseFromString(`<div>${newHtml}</div>`, "text/html")
@@ -42,7 +57,8 @@ export function morphElement(element, newHtml) {
   if (typeof Idiomorph !== "undefined") {
     Idiomorph.morph(element, newContent, {
       morphStyle: "innerHTML",
-      ignoreActiveValue: true
+      ignoreActiveValue: true,
+      callbacks: morphCallbacks
     })
   } else {
     element.innerHTML = newContent.innerHTML
