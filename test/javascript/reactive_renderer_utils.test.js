@@ -259,6 +259,29 @@ describe("morphElement", () => {
     delete globalThis.Idiomorph
   })
 
+  it("leaves an element marked permanent alone when it has an id", () => {
+    const morphMock = vi.fn()
+    globalThis.Idiomorph = { morph: morphMock }
+
+    morphElement(element, "<p>morphed</p>")
+    const { callbacks } = morphMock.mock.calls[0][2]
+
+    const permanent = document.createElement("div")
+    permanent.id = "menu"
+    permanent.setAttribute("data-turbo-permanent", "")
+    const unpaired = document.createElement("div")
+    unpaired.setAttribute("data-turbo-permanent", "")
+    const ordinary = document.createElement("div")
+
+    expect(callbacks.beforeNodeMorphed(permanent, ordinary)).toBe(false)
+    expect(callbacks.beforeNodeRemoved(permanent)).toBe(false)
+    expect(callbacks.beforeNodeMorphed(unpaired, ordinary)).toBe(true)
+    expect(callbacks.beforeNodeMorphed(ordinary, ordinary)).toBe(true)
+    expect(callbacks.beforeNodeRemoved(ordinary)).toBe(true)
+
+    delete globalThis.Idiomorph
+  })
+
   it("cancels a node when one hook returns false", () => {
     const morphMock = vi.fn()
     globalThis.Idiomorph = { morph: morphMock }

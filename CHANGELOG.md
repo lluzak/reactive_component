@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+- A morph leaves `[data-turbo-permanent]` elements alone, as Turbo's own morph
+  does. An open menu marks itself permanent while it is open, and an update
+  underneath it no longer closes it.
+
 ## [0.8.5] - 2026-09-16
 
 ### Added
