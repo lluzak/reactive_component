@@ -35,13 +35,47 @@ The record the entity is keyed on. It defines:
 
 `class_name` defaults to `name.classify`.
 
-### `rebuilds_on(model, via: nil, fields: nil)`
+### `key(*names)`
+
+The alternative to `root` for an entity that is not one record but a tuple of values — a count per company and user, a filtered list, a summary of a group. It defines:
+
+- `initialize(company_id:, user_id:)` and a reader per name
+- `id`, the values joined the way Rails joins a composite primary key
+- `DueCount.find(id)` and `DueCount.find_by(id:)`
+
+An id with the wrong number of values resolves to `nil` rather than raising, so a tampered stream id is a miss, not a 500.
+
+```ruby
+class DueCount
+  include ReactiveComponent::Entity
+
+  key :company_id, :user_id
+  rebuilds_on Task, fields: %i[due_on assignee_id],
+                    entities: ->(task) { new(company_id: task.company_id, user_id: task.assignee_id) }
+
+  def count = Task.where(company_id: company_id, assignee_id: user_id).due.count
+end
+```
+
+Use `root` when the component's record already exists, `key` when the entity is computed over many.
+
+### `rebuilds_on(model, via: nil, fields: nil, entities: nil)`
 
 Rebroadcast the entity after `model` commits.
 
-- Omit `via:` when `model` is the root. Create, update and destroy map to the component's `:create`, `:update` and `:destroy` events.
+- Omit `via:` and `entities:` when `model` is the root. Create, update and destroy map to the component's `:create`, `:update` and `:destroy` events.
 - `via:` names the foreign key on a child model that points at the root. Child commits, including destroys, rebroadcast an `:update` for the parent entity.
-- `fields:` limits updates to the listed columns. Creates and destroys always broadcast.
+- `entities:` takes the record and returns the entities to rebuild, one or an array. Use it when one commit touches several entities, or when the entity is keyed on values rather than reachable through a single foreign key. It is mutually exclusive with `via:`, and every returned entity broadcasts an `:update`.
+- `fields:` limits updates to the listed columns. Creates and destroys always broadcast. With `entities:`, the lambda only runs for a change that passes the filter.
+
+A change that moves a record between entities has to rebuild both sides:
+
+```ruby
+rebuilds_on Task, fields: %i[due_on assignee_id], entities: ->(task) {
+  assignees = [task.assignee_id, task.assignee_id_previously_was].compact.uniq
+  assignees.map { |id| new(company_id: task.company_id, user_id: id) }
+}
+```
 
 ## Subscribing a component
 

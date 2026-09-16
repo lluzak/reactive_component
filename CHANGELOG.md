@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- `key :company_id, :user_id` on a derived entity, for an entity keyed on a
+  tuple of values instead of one root record. It defines the readers, the
+  keyword initializer, a joined `id`, and `find` / `find_by(id:)`. A key of
+  the wrong arity resolves to nil instead of raising.
+- `rebuilds_on ..., entities: ->(record) { ... }` fans one commit out to
+  every entity it affects, for when the entity is not reachable through a
+  single foreign key. Mutually exclusive with `via:`.
+
 ## [0.8.3] - 2026-09-15
 
 ### Added
