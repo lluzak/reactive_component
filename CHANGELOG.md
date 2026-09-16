@@ -6,7 +6,9 @@
 - `key :company_id, :user_id` on a derived entity, for an entity keyed on a
   tuple of values instead of one root record. It defines the readers, the
   keyword initializer, a joined `id`, and `find` / `find_by(id:)`. A key of
-  the wrong arity resolves to nil instead of raising.
+  the wrong arity resolves to nil instead of raising. The readers, the
+  initializer and `from_key` are defaults: an entity built from records
+  rather than ids replaces them, and `find` rebuilds it through `from_key`.
 - `rebuilds_on ..., entities: ->(record) { ... }` fans one commit out to
   every entity it affects, for when the entity is not reachable through a
   single foreign key. Mutually exclusive with `via:`.

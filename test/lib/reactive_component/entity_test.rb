@@ -198,3 +198,47 @@ class ReactiveComponent::EntityGlobalIdTest < ActiveSupport::TestCase
     assert_equal @summary.to_gid_param, Turbo::StreamsChannel.verified_stream_name(signed)
   end
 end
+
+class ReactiveComponent::EntityCustomKeyTest < ActiveSupport::TestCase
+  # A key is what identifies the entity, not how the entity is built: this one
+  # is constructed from records and reads its key off them.
+  class Thread
+    include ReactiveComponent::Entity
+
+    key :sender_id, :recipient_id
+
+    def initialize(sender, recipient)
+      @sender = sender
+      @recipient = recipient
+    end
+
+    attr_reader :sender, :recipient
+
+    delegate :id, to: :sender, prefix: true
+    delegate :id, to: :recipient, prefix: true
+
+    def self.from_key(sender_id:, recipient_id:)
+      new(Contact.find(sender_id), Contact.find(recipient_id))
+    end
+  end
+
+  setup do
+    @alice = Contact.create!(name: 'Alice', email: 'alice@example.com')
+    @bob   = Contact.create!(name: 'Bob', email: 'bob@example.com')
+  end
+
+  test 'a custom initializer still keys the entity off the named readers' do
+    assert_equal "#{@alice.id}-#{@bob.id}", Thread.new(@alice, @bob).id
+  end
+
+  test 'find rebuilds through from_key, not through new' do
+    found = Thread.find("#{@alice.id}-#{@bob.id}")
+
+    assert_equal @alice, found.sender
+    assert_equal @bob, found.recipient
+  end
+
+  test 'a wrong arity key never reaches from_key' do
+    assert_nil Thread.find(@alice.id.to_s)
+  end
+end

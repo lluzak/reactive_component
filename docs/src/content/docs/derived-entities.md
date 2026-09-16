@@ -39,9 +39,9 @@ The record the entity is keyed on. It defines:
 
 The alternative to `root` for an entity that is not one record but a tuple of values — a count per company and user, a filtered list, a summary of a group. It defines:
 
-- `initialize(company_id:, user_id:)` and a reader per name
 - `id`, the values joined the way Rails joins a composite primary key
 - `DueCount.find(id)` and `DueCount.find_by(id:)`
+- a reader per name, `initialize(company_id:, user_id:)` and `from_key`, as defaults you can replace
 
 An id with the wrong number of values resolves to `nil` rather than raising, so a tampered stream id is a miss, not a 500.
 
@@ -56,6 +56,32 @@ class DueCount
   def count = Task.where(company_id: company_id, assignee_id: user_id).due.count
 end
 ```
+
+The key says what identifies the entity, not how it is built. An entity that would rather hold records than ids defines its own `initialize`, its own readers, and the `from_key` that `find` rebuilds it through:
+
+```ruby
+class DueCount
+  include ReactiveComponent::Entity
+
+  key :company_id, :user_id
+
+  def initialize(company, user)
+    @company = company
+    @user = user
+  end
+
+  attr_reader :company, :user
+
+  delegate :id, to: :company, prefix: true
+  delegate :id, to: :user, prefix: true
+
+  def self.from_key(company_id:, user_id:)
+    new(Company.find(company_id), User.find(user_id))
+  end
+end
+```
+
+`find` and `find_by` split the id and hand the values to `from_key`, so only `from_key` has to know how the entity is constructed. A key of the wrong arity never reaches it.
 
 Use `root` when the component's record already exists, `key` when the entity is computed over many.
 

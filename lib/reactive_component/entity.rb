@@ -66,11 +66,30 @@ module ReactiveComponent
         define_singleton_method(:find_by) { |id:| (record = class_name.constantize.find_by(id: id)) && new(name => record) }
       end
 
-      # An entity keyed on plain values instead of a record. Defines the
-      # readers, `initialize(company_id:, user_id:)`, an `id` that joins the
-      # values the way Rails joins a composite primary key, and the
-      # `find` / `find_by(id:)` the channel and actions controller need.
-      # A key with the wrong arity resolves to nil rather than raising.
+      # An entity keyed on plain values instead of a record. Defines an `id`
+      # that joins the values the way Rails joins a composite primary key, the
+      # `find` / `find_by(id:)` the channel and actions controller need, and,
+      # as defaults you can replace, the readers, `initialize(company_id:,
+      # user_id:)` and `from_key`. A key with the wrong arity resolves to nil
+      # rather than raising.
+      #
+      # `find` turns an id back into an entity through `from_key`, so an
+      # entity that would rather be built from records than from ids defines
+      # its own `initialize` and its own `from_key` to match:
+      #
+      #   key :company_id, :user_id
+      #
+      #   def initialize(company, user)
+      #     @company = company
+      #     @user = user
+      #   end
+      #
+      #   delegate :id, to: :company, prefix: true
+      #   delegate :id, to: :user, prefix: true
+      #
+      #   def self.from_key(company_id:, user_id:)
+      #     new(Company.find(company_id), User.find(user_id))
+      #   end
       def key(*names)
         names = names.map(&:to_sym)
         attr_reader(*names)
@@ -78,9 +97,10 @@ module ReactiveComponent
         define_method(:initialize) { |**kwargs| names.each { |n| instance_variable_set(:"@#{n}", kwargs.fetch(n)) } }
         define_method(:id) { names.map { |n| public_send(n) }.join('-') }
 
+        define_singleton_method(:from_key) { |**values| new(**values) }
         define_singleton_method(:find_by) do |id:|
           values = id.to_s.split('-')
-          new(**names.zip(values).to_h) if values.size == names.size
+          from_key(**names.zip(values).to_h) if values.size == names.size
         end
         define_singleton_method(:find) { |id| find_by(id: id) }
       end
