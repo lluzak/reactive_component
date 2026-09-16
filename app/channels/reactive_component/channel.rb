@@ -21,7 +21,7 @@ module ReactiveComponent
 
     def request_update(data)
       params = data['params'] || {}
-      component_class, record = subscribed_component_and_record(data, params)
+      component_class, record = subscribed_component_and_record(data)
       return unless record
 
       if record_matches?(record, params)
@@ -34,22 +34,29 @@ module ReactiveComponent
 
     private
 
-    # The component must be a reactive component and the record must broadcast
-    # to the stream this subscriber verified: the same stream the wrapper
-    # signed into the page. Anything else is a guess at a record id the client
-    # was never shown.
-    def subscribed_component_and_record(data, params)
+    # The component must be a reactive component, the record must come from a
+    # signed id this gem minted, and it must broadcast to the stream this
+    # subscriber verified: the same stream the wrapper signed into the page.
+    def subscribed_component_and_record(data)
       component_class = data['component'].to_s.safe_constantize
       return unless component_class.is_a?(Class) && component_class.include?(ReactiveComponent)
 
-      record = component_class.live_model_class.find_by(id: data['record_id'] || params.delete('record_id'))
-      return unless record
+      record = locate_signed(data['sgid'])
+      return unless record.is_a?(component_class.live_model_class)
 
       stream = ReactiveComponent::Wrapper.find_stream_for(component_class, record)
       signed = Turbo::StreamsChannel.signed_stream_name(stream)
       return unless Turbo::StreamsChannel.verified_stream_name(signed) == @stream_name
 
       [component_class, record]
+    end
+
+    # An id we did not sign, one signed for another purpose, an expired one,
+    # or one pointing at a row that is gone: all of them are a miss.
+    def locate_signed(sgid)
+      GlobalID::Locator.locate_signed(sgid, for: ReactiveComponent::Wrapper::SGID_PURPOSE)
+    rescue ActiveRecord::RecordNotFound
+      nil
     end
 
     def record_matches?(record, params)

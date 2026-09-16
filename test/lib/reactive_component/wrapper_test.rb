@@ -115,14 +115,24 @@ class ReactiveComponent::WrapperTest < ActiveSupport::TestCase
     assert_includes html, %(data-reactive-renderer-component-value="MessageRowComponent")
   end
 
-  test 'wrap fills in component name and record id for notify strategy' do
+  test 'wrap fills in component name and a signed record id for notify strategy' do
     html = ReactiveComponent::Wrapper.wrap(MessageRowComponent, @message, '<p>inner</p>', strategy: :notify,
                                                                                           params: { folder: 'starred' })
 
     assert_includes html, %(data-reactive-renderer-component-value="MessageRowComponent")
     params = JSON.parse(CGI.unescapeHTML(html[/data-reactive-renderer-params-value="([^"]*)"/, 1]))
 
-    assert_equal({ 'record_id' => @message.id, 'folder' => 'starred' }, params)
+    assert_equal({ 'folder' => 'starred' }, params)
+
+    sgid = html[/data-reactive-renderer-sgid-value="([^"]*)"/, 1]
+
+    assert_equal @message, GlobalID::Locator.locate_signed(sgid, for: ReactiveComponent::Wrapper::SGID_PURPOSE)
+  end
+
+  test 'wrap signs no record id outside notify strategy' do
+    html = ReactiveComponent::Wrapper.wrap(MessageRowComponent, @message, '<p>inner</p>')
+
+    assert_not_includes html, 'data-reactive-renderer-sgid-value'
   end
 
   test 'wrap follows the global skip_own_broadcasts setting' do

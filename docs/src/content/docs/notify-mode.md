@@ -53,7 +53,7 @@ end
 | `component_name` | The component class the server renders. Defaults to the component's own class. |
 | `skip_own_broadcasts` | Skip the re-render request after this component's own `live_action`. Defaults to [`ReactiveComponent.skip_own_broadcasts`](/reactive_component/configuration/#reactivecomponentskip_own_broadcasts). |
 
-The component's record id is added to `params` for you.
+A notify wrapper also carries a signed id of its record, minted for this gem alone. It is what the server resolves the re-render request against, so nothing has to trust a raw id from the page.
 
 ## Filtering
 
@@ -76,8 +76,8 @@ There is one callback for the whole app, so it sees records from every notify co
 
 1. The record commits and its component class broadcasts `update` on the stream.
 2. Each client finds the component showing that record. Components for other records on the same stream ignore the message.
-3. The component waits 50 ms, so a burst of changes becomes one request, then sends `request_update` over its cable subscription with its component name, record id, and `params`.
-4. The channel checks the record broadcasts to the stream this client subscribed to, then runs the filter.
+3. The component waits 50 ms, so a burst of changes becomes one request, then sends `request_update` over its cable subscription with its component name, its signed record id, and `params`.
+4. The channel resolves the signed id, checks the record broadcasts to the stream this client subscribed to, then runs the filter.
 5. It transmits `render` with fresh data, or `remove` when the filter returned `false`.
 
 A destroyed record's component is removed straight from the `destroy` broadcast; there is nothing left to render. Creates are unaffected: `prepend_target` still inserts new rows.
@@ -88,6 +88,6 @@ Push costs one render per change, on the server, shared by every viewer. Notify 
 
 ## Security
 
-The request can only reach records whose `broadcasts` stream is the signed stream the client subscribed to, and only classes that include `ReactiveComponent`. Anything else is ignored.
+A re-render request names its record with a signed global id, not a raw one. An id this gem did not sign, one signed elsewhere in the app for another purpose, one that has expired, or one whose row is gone: every one of them is a miss. The record must also broadcast to the signed stream this client subscribed to, and the component class must include `ReactiveComponent`. Anything else is ignored.
 
 `params` are written into the page and sent back by the browser, so a user can change them. The filter decides what to display, never what a user may see: authorize through the stream.

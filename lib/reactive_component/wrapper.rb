@@ -2,15 +2,22 @@
 
 module ReactiveComponent
   module Wrapper
+    # Scopes the signed ids a notify wrapper puts on the page: a signed id
+    # minted elsewhere in the app cannot be replayed at our channel.
+    SGID_PURPOSE = 'reactive_component'
+
     module_function
 
     def wrap(component_class, record, inner_html, stream: nil, client_state: nil, strategy: nil, component_name: nil,
              params: nil, template_id: nil, skip_own_broadcasts: ReactiveComponent.skip_own_broadcasts)
       dom_id_val = component_class.dom_id_for(record)
 
+      # A notify component asks the server to re-render it, so it carries a
+      # signed id of the record it is allowed to ask about. The raw id stays
+      # out of it: the client already has one in its data.
       if strategy.to_s == 'notify'
         component_name ||= component_class.name
-        params = { record_id: record.id }.merge(params || {})
+        sgid = record.to_sgid_param(for: SGID_PURPOSE)
       end
 
       attrs = [
@@ -41,6 +48,8 @@ module ReactiveComponent
       attrs << %(data-reactive-renderer-skip-own-broadcasts-value="true") if skip_own_broadcasts
 
       attrs << %(data-reactive-renderer-component-value="#{component_name}") if component_name
+
+      attrs << %(data-reactive-renderer-sgid-value="#{sgid}") if sgid
 
       attrs << %(data-reactive-renderer-params-value="#{ERB::Util.html_escape(params.to_json)}") if params
 
