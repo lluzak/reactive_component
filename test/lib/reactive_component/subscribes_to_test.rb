@@ -67,6 +67,29 @@ class ReactiveComponent::SubscribesToTest < ActiveSupport::TestCase
     assert_nil klass.live_model_class
   end
 
+  test 'subscribes_to strategy: :notify broadcasts a signal rather than a render' do
+    klass = Class.new(ApplicationComponent) do
+      include ReactiveComponent
+
+      subscribes_to :message, strategy: :notify
+
+      def call = raise('a notify broadcast must not render')
+    end
+    stub_const('NotifyOnlyComponent', klass)
+
+    assert_predicate NotifyOnlyComponent, :notify?
+
+    sender = Contact.create!(name: 'Sam')
+    message = Message.create!(subject: 'hi', body: 'there', sender: sender, recipient: sender)
+    payload = nil
+    ReactiveComponent::Channel.stub(:broadcast_data, ->(_stream, action:, data:) { payload = [action, data] }) do
+      ReactiveComponent.broadcast_for(NotifyOnlyComponent, message, action: :update)
+    end
+
+    assert_equal :update, payload.first
+    assert_equal %w[id dom_id], payload.last.keys
+  end
+
   private
 
   def stub_const(name, value)

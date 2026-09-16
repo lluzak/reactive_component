@@ -38,6 +38,7 @@ module ReactiveComponent
     class_attribute :_client_state_fields, instance_writer: false, default: {}
     class_attribute :_subscribed_events, instance_writer: false, default: %i[create update destroy]
     class_attribute :_subscribed_fields, instance_writer: false, default: nil
+    class_attribute :_strategy, instance_writer: false, default: nil
   end
 
   def render_in(view_context, &)
@@ -60,6 +61,7 @@ module ReactiveComponent
                    end
 
     extra_opts = respond_to?(:live_wrapper_options, true) ? live_wrapper_options : {}
+    extra_opts = { strategy: self.class._strategy }.merge(extra_opts) if self.class._strategy
 
     wrapped = ReactiveComponent::Wrapper.wrap(self.class, record, inner_html, stream: stream, client_state: client_state,
                                                                               **extra_opts)
@@ -116,6 +118,10 @@ module ReactiveComponent
   end
   private_class_method :raise_unsafe!
 
+  def self.signal_for(component_class, record)
+    { 'id' => record.id, 'dom_id' => component_class.dom_id_for(record) }
+  end
+
   def self.broadcast_for(component_class, record, action:)
     return unless component_class._subscribed_events.include?(action)
 
@@ -129,11 +135,13 @@ module ReactiveComponent
 
     case action
     when :update
-      Channel.broadcast_data(stream, action: :update, data: component_class.build_data(record))
+      # A notify component asks the server for its own render, so a payload
+      # here is work nobody reads: send it the bare signal.
+      data = component_class.notify? ? signal_for(component_class, record) : component_class.build_data(record)
+
+      Channel.broadcast_data(stream, action: :update, data: data)
     when :destroy
-      Channel.broadcast_data(stream, action: :destroy, data: {
-                               'id' => record.id, 'dom_id' => component_class.dom_id_for(record)
-                             })
+      Channel.broadcast_data(stream, action: :destroy, data: signal_for(component_class, record))
     when :create
       target = config&.dig(:prepend_target)
       return unless target
@@ -145,11 +153,12 @@ module ReactiveComponent
   end
 
   class_methods do
-    def subscribes_to(attr_name, class_name: nil, only: %i[create update destroy], fields: nil)
+    def subscribes_to(attr_name, class_name: nil, only: %i[create update destroy], fields: nil, strategy: nil)
       self._live_model_attr = attr_name.to_sym
       self._live_model_class_name = class_name || attr_name.to_s.classify
       self._subscribed_events = Array(only).map(&:to_sym)
       self._subscribed_fields = fields && Array(fields).map(&:to_s)
+      self._strategy = strategy&.to_sym
 
       component_class = self
 
@@ -173,6 +182,10 @@ module ReactiveComponent
         ActiveSupport.on_load(:active_record) { wire_up_model.call }
       end
     end
+
+    # Whether every instance notifies rather than pushes, which a broadcast
+    # needs to know without an instance to ask.
+    def notify? = _strategy == :notify
 
     def live_model_class
       _live_model_class_name&.constantize

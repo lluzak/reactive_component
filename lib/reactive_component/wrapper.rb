@@ -12,6 +12,12 @@ module ReactiveComponent
              params: nil, template_id: nil, skip_own_broadcasts: ReactiveComponent.skip_own_broadcasts)
       dom_id_val = component_class.dom_id_for(record)
 
+      # A notify class broadcasts no data, so an instance cannot go back to push.
+      if component_class.notify? && strategy.to_s != 'notify'
+        raise ArgumentError, "#{component_class.name} declares strategy: :notify; " \
+                             "the wrapper cannot switch it to #{strategy.inspect}"
+      end
+
       # A notify component asks the server to re-render it, so it carries a
       # signed id of the record it is allowed to ask about. The raw id stays
       # out of it: the client already has one in its data.

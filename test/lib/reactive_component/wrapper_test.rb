@@ -197,6 +197,21 @@ class ReactiveComponent::WrapperTest < ActiveSupport::TestCase
 
   # --- find_stream_for ---
 
+  test 'wrap refuses to switch a class declared notify back to push' do
+    klass = Class.new(ApplicationComponent) do
+      include ReactiveComponent
+
+      subscribes_to :message, strategy: :notify
+    end
+    def klass.name = 'NotifyClassComponent'
+
+    assert_raises(ArgumentError) { ReactiveComponent::Wrapper.wrap(klass, @message, '', strategy: :push) }
+    assert_includes ReactiveComponent::Wrapper.wrap(klass, @message, '', strategy: :notify),
+                    %(data-reactive-renderer-strategy-value="notify")
+  ensure
+    Message.reactive_component_classes = Message.reactive_component_classes - [klass]
+  end
+
   test 'find_stream_for returns record as default stream when no broadcast config' do
     klass = Class.new(ApplicationComponent) { include ReactiveComponent }
 

@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Added
+- `subscribes_to ..., strategy: :notify` declares notify mode for every
+  instance. A broadcast then sends the bare signal instead of building a
+  payload no notify client reads, and the wrapper needs no
+  `live_wrapper_options`. An instance cannot switch such a class back to push.
+
 ### Changed
 - A morph leaves `[data-turbo-permanent]` elements alone, as Turbo's own morph
   does. An open menu marks itself permanent while it is open, and an update
