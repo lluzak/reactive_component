@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.8.5] - 2026-09-16
 
 ### Added
 - `morphHooks`: register Idiomorph callbacks that run inside every component's
