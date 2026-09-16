@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Documented the `reactive-morph-flash` class the client puts back on a
+  component after every re-render, with example CSS. See Showing that a
+  component updated.
+
 ## [0.8.3] - 2026-09-15
 
 ### Added

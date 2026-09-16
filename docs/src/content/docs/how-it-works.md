@@ -77,6 +77,30 @@ When a broadcast arrives:
 
 Because the render function was compiled at boot time and the data payload is minimal, re-renders are fast and require no round-trip to generate HTML on the server.
 
+### Showing that a component updated
+
+Every re-render puts the class `reactive-morph-flash` back on the component's wrapper, re-adding it so the animation restarts on each push. No stylesheet ships with the gem, so nothing is visible until you style it:
+
+```css
+@keyframes reactive-morph-flash {
+  from { background-color: rgba(59, 130, 246, 0.18); }
+  to   { background-color: transparent; }
+}
+
+.reactive-morph-flash {
+  animation: reactive-morph-flash 1.2s ease-out;
+}
+
+/* A steady tint for people who asked for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  .reactive-morph-flash { animation: none; background-color: rgba(59, 130, 246, 0.1); }
+}
+```
+
+Animate colour, not size or position: a re-render can arrive while someone is reading, and a background tint moves nothing on the page.
+
+This marks the whole component, including a push where nothing visible changed.
+
 ## The Wrapper Element
 
 The `Wrapper` module is responsible for generating the outer `<div>` that ties everything together. It sets the Stimulus `data-controller` attribute and populates the data values the controller needs:
