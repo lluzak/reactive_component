@@ -19,6 +19,14 @@ module ReactiveComponent
   #     def total = order.payments.sum(:amount)
   #   end
   #
+  # An entity that is not keyed on one record uses `key` instead of `root`:
+  #
+  #   class DueCount
+  #     include ReactiveComponent::Entity
+  #
+  #     key :company_id, :user_id
+  #   end
+  #
   #   class OrderSummaryComponent < ApplicationComponent
   #     include ReactiveComponent
   #     subscribes_to :summary, class_name: "OrderSummary"
@@ -51,6 +59,25 @@ module ReactiveComponent
 
         define_singleton_method(:find)    { |id| new(name => class_name.constantize.find(id)) }
         define_singleton_method(:find_by) { |id:| (record = class_name.constantize.find_by(id: id)) && new(name => record) }
+      end
+
+      # An entity keyed on plain values instead of a record. Defines the
+      # readers, `initialize(company_id:, user_id:)`, an `id` that joins the
+      # values the way Rails joins a composite primary key, and the
+      # `find` / `find_by(id:)` the channel and actions controller need.
+      # A key with the wrong arity resolves to nil rather than raising.
+      def key(*names)
+        names = names.map(&:to_sym)
+        attr_reader(*names)
+
+        define_method(:initialize) { |**kwargs| names.each { |n| instance_variable_set(:"@#{n}", kwargs.fetch(n)) } }
+        define_method(:id) { names.map { |n| public_send(n) }.join('-') }
+
+        define_singleton_method(:find_by) do |id:|
+          values = id.to_s.split('-')
+          new(**names.zip(values).to_h) if values.size == names.size
+        end
+        define_singleton_method(:find) { |id| find_by(id: id) }
       end
 
       # Rebroadcast the entity after `model` commits. `via:` is the foreign key

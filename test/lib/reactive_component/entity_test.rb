@@ -92,3 +92,31 @@ class ReactiveComponent::EntityTest < ActiveSupport::TestCase
     assert_includes data.values, 'Test'
   end
 end
+
+class ReactiveComponent::EntityKeyTest < ActiveSupport::TestCase
+  class DueCount
+    include ReactiveComponent::Entity
+
+    key :company_id, :user_id
+  end
+
+  test 'key defines readers, a keyword initializer and a joined id' do
+    count = DueCount.new(company_id: 1, user_id: 2)
+
+    assert_equal 1, count.company_id
+    assert_equal 2, count.user_id
+    assert_equal '1-2', count.id
+    assert_equal 'entity_key_test_due_count/1-2', count.to_param
+  end
+
+  test 'find and find_by parse the joined id back into the key' do
+    assert_equal %w[1 2], [DueCount.find('1-2').company_id, DueCount.find('1-2').user_id]
+    assert_equal '1-2', DueCount.find_by(id: '1-2').id
+  end
+
+  test 'a key of the wrong arity resolves to nil instead of raising' do
+    assert_nil DueCount.find('1')
+    assert_nil DueCount.find_by(id: '1-2-3')
+    assert_nil DueCount.find_by(id: nil)
+  end
+end

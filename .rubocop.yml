@@ -75,7 +75,10 @@ Metrics/PerceivedComplexity:
     - 'lib/reactive_component/data_evaluator.rb'
     - 'lib/reactive_component/wrapper.rb'
 
+# `class_methods do` is a class body, not a block of logic
 Metrics/BlockLength:
+  AllowedMethods:
+    - class_methods
   Exclude:
     - 'test/**/*'
     - 'lib/reactive_component.rb'
