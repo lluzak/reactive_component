@@ -20,7 +20,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "lts/*"
-          registry-url: "https://registry.npmjs.org"
+
+      # Trusted publishing needs npm 11.5.1 or newer, and no .npmrc: a
+      # registry-url writes one that points at NODE_AUTH_TOKEN, and npm then
+      # authenticates with that placeholder instead of the OIDC token. npmjs
+      # answers the unauthorized PUT with a 404.
+      - name: Use an npm that can publish through OIDC
+        run: npm install -g npm@latest
 
       - name: Check tag matches gem and package versions
         run: |
