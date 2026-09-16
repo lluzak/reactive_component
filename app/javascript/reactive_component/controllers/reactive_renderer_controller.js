@@ -68,6 +68,7 @@ export default class extends Controller {
     data: { type: Object, default: {} },
     strategy: { type: String, default: "push" },
     component: { type: String, default: "" },
+    sgid: { type: String, default: "" },
     params: { type: Object, default: {} },
     fieldMap: { type: Object, default: {} },
     skipOwnBroadcasts: { type: Boolean, default: false }
@@ -165,7 +166,7 @@ export default class extends Controller {
 
       sub.perform("request_update", {
         component: this.componentValue,
-        record_id: this.dataValue?.id,
+        sgid: this.sgidValue,
         dom_id: this.element.id,
         params: this.paramsValue
       })

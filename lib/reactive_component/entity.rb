@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'active_model'
+require 'global_id'
 
 module ReactiveComponent
   # A derived entity: a plain object built on top of several ActiveRecord
@@ -19,6 +20,16 @@ module ReactiveComponent
   #     def total = order.payments.sum(:amount)
   #   end
   #
+  # An entity that is not keyed on one record uses `key` instead of `root`:
+  #
+  #   class DueCount
+  #     include ReactiveComponent::Entity
+  #
+  #     key :company_id, :user_id
+  #     rebuilds_on Task, fields: %i[due_on],
+  #                       entities: ->(task) { new(company_id: task.company_id, user_id: task.assignee_id) }
+  #   end
+  #
   #   class OrderSummaryComponent < ApplicationComponent
   #     include ReactiveComponent
   #     subscribes_to :summary, class_name: "OrderSummary"
@@ -27,6 +38,7 @@ module ReactiveComponent
     extend ActiveSupport::Concern
     include ActiveModel::Model
     include Broadcastable
+    include GlobalID::Identification
 
     included do
       class_attribute :root_name, instance_writer: false
@@ -34,8 +46,9 @@ module ReactiveComponent
 
     def persisted? = true
 
-    # Default stream when the component declares no `broadcasts stream:`.
-    # A bare id would collide with every other entity sharing it.
+    # Turbo's `stream_name_from` prefers `to_gid_param`, so an entity names its
+    # own stream. `to_param` stays as the fallback for when `GlobalID.app`
+    # isn't set: a bare id would collide with every other entity sharing it.
     def to_param = "#{self.class.model_name.param_key}/#{id}"
 
     class_methods do
@@ -53,26 +66,75 @@ module ReactiveComponent
         define_singleton_method(:find_by) { |id:| (record = class_name.constantize.find_by(id: id)) && new(name => record) }
       end
 
+      # An entity keyed on plain values instead of a record. Defines an `id`
+      # that joins the values the way Rails joins a composite primary key, the
+      # `find` / `find_by(id:)` the channel and actions controller need, and,
+      # as defaults you can replace, the readers, `initialize(company_id:,
+      # user_id:)` and `from_key`. A key with the wrong arity resolves to nil
+      # rather than raising.
+      #
+      # `find` turns an id back into an entity through `from_key`, so an
+      # entity that would rather be built from records than from ids defines
+      # its own `initialize` and its own `from_key` to match:
+      #
+      #   key :company_id, :user_id
+      #
+      #   def initialize(company, user)
+      #     @company = company
+      #     @user = user
+      #   end
+      #
+      #   delegate :id, to: :company, prefix: true
+      #   delegate :id, to: :user, prefix: true
+      #
+      #   def self.from_key(company_id:, user_id:)
+      #     new(Company.find(company_id), User.find(user_id))
+      #   end
+      def key(*names)
+        names = names.map(&:to_sym)
+        attr_reader(*names)
+
+        define_method(:initialize) { |**kwargs| names.each { |n| instance_variable_set(:"@#{n}", kwargs.fetch(n)) } }
+        define_method(:id) { names.map { |n| public_send(n) }.join('-') }
+
+        define_singleton_method(:from_key) { |**values| new(**values) }
+        define_singleton_method(:find_by) do |id:|
+          values = id.to_s.split('-')
+          from_key(**names.zip(values).to_h) if values.size == names.size
+        end
+        define_singleton_method(:find) { |id| find_by(id: id) }
+      end
+
       # Rebroadcast the entity after `model` commits. `via:` is the foreign key
       # on `model` pointing at the root; omit it when `model` is the root.
       # `fields:` narrows updates to the listed columns; create and destroy
       # always count.
-      def rebuilds_on(model, via: nil, fields: nil)
+      # `entities:` is the alternative to `via:` when one commit touches more
+      # than one entity, or when the entity is not reachable through a single
+      # foreign key: it takes the record and returns the entities to rebuild.
+      def rebuilds_on(model, via: nil, fields: nil, entities: nil)
+        raise ArgumentError, 'rebuilds_on takes either via: or entities:, not both' if via && entities
+
         entity = self
         fields = fields&.map(&:to_s)
 
-        model.after_commit { entity.rebuild_from(self, via: via, fields: fields) }
+        model.after_commit { entity.rebuild_from(self, via: via, fields: fields, entities: entities) }
       end
 
-      def rebuild_from(record, via:, fields:)
+      def rebuild_from(record, via:, fields:, entities: nil)
         action = commit_action(record)
-        return if action == :update && fields && !record.saved_changes.keys.intersect?(fields)
+        return if unlisted_change?(record, action, fields)
+        return Array(entities.call(record)).each { |e| e.broadcast_reactive(:update) } if entities
         return find_by(id: record.public_send(via))&.broadcast_reactive(:update) if via
 
         new(root_name => record).broadcast_reactive(action)
       end
 
       private
+
+      def unlisted_change?(record, action, fields)
+        action == :update && fields && !record.saved_changes.keys.intersect?(fields)
+      end
 
       def commit_action(record)
         return :destroy if record.destroyed?

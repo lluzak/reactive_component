@@ -59,6 +59,10 @@ class ReactiveComponent::ChannelTest < ActionCable::Channel::TestCase
      Message.create!(subject: 'For Bob', body: 'x', sender: alice, recipient: bob)]
   end
 
+  def sgid_for(record, purpose: ReactiveComponent::Wrapper::SGID_PURPOSE)
+    record.to_sgid_param(for: purpose)
+  end
+
   def subscribe_to_messages_of(contact)
     subscribe signed_stream_name: Turbo::StreamsChannel.signed_stream_name([contact, :messages])
 
@@ -75,7 +79,7 @@ class ReactiveComponent::ChannelTest < ActionCable::Channel::TestCase
     alices, = alice_and_bob_messages
     subscribe_to_messages_of(alices.recipient)
 
-    perform :request_update, 'component' => 'MessageRowComponent', 'record_id' => alices.id
+    perform :request_update, 'component' => 'MessageRowComponent', 'sgid' => sgid_for(alices)
 
     assert_equal 1, transmissions.size
     assert_equal 'render', transmissions.last['action']
@@ -85,7 +89,7 @@ class ReactiveComponent::ChannelTest < ActionCable::Channel::TestCase
     alices, bobs = alice_and_bob_messages
     subscribe_to_messages_of(alices.recipient)
 
-    perform :request_update, 'component' => 'MessageRowComponent', 'record_id' => bobs.id
+    perform :request_update, 'component' => 'MessageRowComponent', 'sgid' => sgid_for(bobs)
 
     assert_empty transmissions
   end
@@ -94,8 +98,8 @@ class ReactiveComponent::ChannelTest < ActionCable::Channel::TestCase
     alices, = alice_and_bob_messages
     subscribe_to_messages_of(alices.recipient)
 
-    perform :request_update, 'component' => 'Message', 'record_id' => alices.id
-    perform :request_update, 'component' => 'Nope::Missing', 'record_id' => alices.id
+    perform :request_update, 'component' => 'Message', 'sgid' => sgid_for(alices)
+    perform :request_update, 'component' => 'Nope::Missing', 'sgid' => sgid_for(alices)
 
     assert_empty transmissions
   end
@@ -104,8 +108,8 @@ class ReactiveComponent::ChannelTest < ActionCable::Channel::TestCase
     alices, = alice_and_bob_messages
     subscribe_to_messages_of(alices.recipient)
 
-    perform :request_update, 'component' => 'MessageRowComponent',
-                             'params' => { 'record_id' => alices.id, 'selected' => true, 'message' => 'pwned' }
+    perform :request_update, 'component' => 'MessageRowComponent', 'sgid' => sgid_for(alices),
+                             'params' => { 'selected' => true, 'message' => 'pwned' }
 
     data = transmissions.last['data']
 
@@ -118,10 +122,10 @@ class ReactiveComponent::ChannelTest < ActionCable::Channel::TestCase
     subscribe_to_messages_of(alices.recipient)
 
     with_filter(->(record, _params) { record.starred? }) do
-      perform :request_update, 'component' => 'MessageRowComponent', 'record_id' => alices.id,
+      perform :request_update, 'component' => 'MessageRowComponent', 'sgid' => sgid_for(alices),
                                'dom_id' => 'message_row_1'
-      perform :request_update, 'component' => 'MessageRowComponent', 'dom_id' => 'message_row_1',
-                               'params' => { 'record_id' => alices.id }
+      perform :request_update, 'component' => 'MessageRowComponent', 'sgid' => sgid_for(alices),
+                               'dom_id' => 'message_row_1'
     end
 
     assert_equal [{ 'action' => 'remove', 'dom_id' => 'message_row_1' }] * 2, transmissions
@@ -132,10 +136,43 @@ class ReactiveComponent::ChannelTest < ActionCable::Channel::TestCase
     subscribe_to_messages_of(alices.recipient)
 
     with_filter(->(_record, params) { params['folder'] == 'inbox' }) do
-      perform :request_update, 'component' => 'MessageRowComponent', 'params' => { 'record_id' => alices.id, 'folder' => 'inbox' }
+      perform :request_update, 'component' => 'MessageRowComponent', 'sgid' => sgid_for(alices),
+                               'params' => { 'folder' => 'inbox' }
     end
 
     assert_equal 'render', transmissions.last['action']
+  end
+
+  test 'request_update ignores an id this gem did not sign' do
+    alices, = alice_and_bob_messages
+    subscribe_to_messages_of(alices.recipient)
+
+    perform :request_update, 'component' => 'MessageRowComponent', 'sgid' => sgid_for(alices, purpose: 'elsewhere')
+    perform :request_update, 'component' => 'MessageRowComponent', 'sgid' => alices.to_gid_param
+    perform :request_update, 'component' => 'MessageRowComponent', 'sgid' => 'forged'
+    perform :request_update, 'component' => 'MessageRowComponent'
+
+    assert_empty transmissions
+  end
+
+  test 'request_update ignores a signed id for another model' do
+    alices, = alice_and_bob_messages
+    subscribe_to_messages_of(alices.recipient)
+
+    perform :request_update, 'component' => 'MessageRowComponent', 'sgid' => sgid_for(alices.recipient)
+
+    assert_empty transmissions
+  end
+
+  test 'request_update ignores a signed id whose record is gone' do
+    alices, = alice_and_bob_messages
+    subscribe_to_messages_of(alices.recipient)
+    sgid = sgid_for(alices)
+    alices.destroy!
+
+    perform :request_update, 'component' => 'MessageRowComponent', 'sgid' => sgid
+
+    assert_empty transmissions
   end
 
   private
