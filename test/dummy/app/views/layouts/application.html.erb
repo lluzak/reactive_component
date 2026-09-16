@@ -95,6 +95,23 @@
         background: #fff;
       }
 
+      /* A demo that keeps being reported as broken should be able to say what
+         it thinks is happening. Everything here comes from the events the gem
+         already dispatches, plus the controller's own state. */
+      #presence-debug {
+        position: fixed; left: 8px; bottom: 8px; z-index: 100;
+        background: #111827; color: #e5e7eb; border-radius: 6px;
+        padding: 7px 9px; font: 11px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+        box-shadow: 0 6px 20px -6px rgba(0,0,0,.5); max-width: 320px;
+      }
+      #presence-debug b { color: #fff; font-weight: 600; }
+      #presence-debug .bad { color: #f87171; }
+      #presence-debug .good { color: #4ade80; }
+      #presence-debug button {
+        float: right; margin-left: 8px; border: 0; background: transparent;
+        color: #9ca3af; cursor: pointer; font: inherit;
+      }
+
       /* Shown until somebody else is on the stream. The gem stamps
          data-presence-here on the controller element the moment one is. */
       [data-presence-here] [data-alone] { display: none; }
@@ -292,6 +309,62 @@
     button.classList.add("bg-white", "font-medium", "text-gray-900")
     button.disabled = true
   })
+</script>
+  
+<div id="presence-debug" hidden></div>
+<script>
+  // Diagnostics for the demo, not part of the gem.
+  (() => {
+    const box = document.getElementById("presence-debug")
+    if (!box) return
+
+    let cursorFrames = 0
+    let lastRoster = null
+
+    document.addEventListener("reactive-presence:changed", () => { lastRoster = Date.now() })
+    document.addEventListener("reactive-presence:cursor", (event) => { if (event.detail.at) cursorFrames++ })
+
+    const controller = () => {
+      const el = document.querySelector('[data-controller~="presence"]')
+      return el && window.Stimulus ? window.Stimulus.getControllerForElementAndIdentifier(el, "presence") : null
+    }
+
+    const row = (label, value, state) =>
+      `<div><b>${label}</b> <span class="${state || ''}">${value}</span></div>`
+
+    const render = () => {
+      const cable = document.querySelector('meta[name="action-cable-url"]')?.content || "none"
+      const named = /as=\d+/.test(cable)
+      const c = controller()
+      const connected = !!document.querySelector("[data-reactive-renderer-connected]")
+
+      if (!c) {
+        box.innerHTML = '<button title="hide">x</button>' +
+          row("presence", "not on this page", "bad") + row("socket", cable, named ? "" : "bad")
+        return
+      }
+
+      const others = c.roster.others()
+      const watchers = others.filter(o => o.state.watching === c.roster.selfId).map(o => o.user.name)
+      box.innerHTML =
+        '<button title="hide">x</button>' +
+        row("you", c.roster.selfId == null ? "not identified yet" : `#${c.roster.selfId}`, c.roster.selfId == null ? "bad" : "good") +
+        row("socket", cable, named ? "" : "bad") +
+        row("cable", connected ? "connected" : "not connected", connected ? "good" : "bad") +
+        row("here", others.length ? others.map(o => o.user.name).join(", ") : "nobody else", others.length ? "good" : "bad") +
+        row("sharing", c.sharing ? "yes" : "no") +
+        row("following", c.watching == null ? "nobody" : `#${c.watching}`) +
+        row("watching you", watchers.length ? watchers.join(", ") : "nobody") +
+        row("sampling mouse", c.sampler ? "yes" : "no") +
+        row("cursor frames", cursorFrames) +
+        row("last roster event", lastRoster ? `${Math.round((Date.now() - lastRoster) / 1000)}s ago` : "never", lastRoster ? "" : "bad")
+    }
+
+    box.addEventListener("click", (event) => { if (event.target.tagName === "BUTTON") box.hidden = true })
+    box.hidden = false
+    render()
+    setInterval(render, 1000)
+  })()
 </script>
   </body>
 </html>

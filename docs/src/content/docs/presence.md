@@ -206,7 +206,7 @@ Even so, 20 frames a second against the roster's one per ten seconds is three or
 
 Two limits worth knowing before you switch this on:
 
-**Joining answers back.** A viewer who receives a frame from somebody not already in their roster announces once, debounced and jittered. That costs one reply per arrival rather than per heartbeat, and it is what makes a newcomer visible immediately instead of after a beat.
+**Joining answers back.** A viewer who receives a frame from somebody not already in their roster answers at once, and at most once every half second. The reply is deliberately not on a timer: the viewer who has to answer is often the one in a background tab, where a timer is throttled to about once a minute, which is exactly the wait the reply exists to avoid. That costs one reply per arrival rather than per heartbeat, and it is what makes a newcomer visible immediately instead of after a beat.
 
 This matters more than it sounds. A browser throttles timers in a hidden tab to roughly once a minute, so without the reply a newcomer could sit for a full minute before an existing viewer in a background tab announced itself.
 
