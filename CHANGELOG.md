@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## [0.8.4] - 2026-09-16
 
 ### Added
 - `key :company_id, :user_id` on a derived entity, for an entity keyed on a
@@ -20,6 +20,9 @@
   instead of a raw one, and the channel resolves it with `locate_signed`
   scoped to this gem. The stream check is unchanged. Upgrading re-renders
   every page, so no client keeps the old payload.
+
+### Fixed
+- The README linked to `.html` documentation URLs the site does not serve.
 
 ## [0.8.3] - 2026-09-15
 

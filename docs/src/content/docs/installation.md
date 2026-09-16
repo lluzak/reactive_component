@@ -51,16 +51,16 @@ application.register("reactive-renderer", ReactiveRendererController)
 If you are using esbuild, Vite, Rspack, or another bundler, install the JavaScript package from npm. Install it under the `reactive_component` alias, matching the gem version. The controller imports its helpers by that name, the same way the importmap pins it:
 
 ```bash
-npm install reactive_component@npm:@lluzak/reactive_component@0.8.3
+npm install reactive_component@npm:@lluzak/reactive_component@0.8.4
 # or
-pnpm add reactive_component@npm:@lluzak/reactive_component@0.8.3
+pnpm add reactive_component@npm:@lluzak/reactive_component@0.8.4
 ```
 
 Either command writes the alias to your `package.json`. You can also add it by hand and run `npm install` or `pnpm install`:
 
 ```json
 "dependencies": {
-  "reactive_component": "npm:@lluzak/reactive_component@0.8.3"
+  "reactive_component": "npm:@lluzak/reactive_component@0.8.4"
 }
 ```
 
