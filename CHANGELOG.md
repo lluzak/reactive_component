@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- `morphHooks`: register Idiomorph callbacks that run inside every component's
+  morph, for flashing changed values and similar page-wide behaviour, without
+  subclassing the controller. See Hooking into the morph.
+
 ## [0.8.4] - 2026-09-16
 
 ### Added

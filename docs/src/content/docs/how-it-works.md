@@ -77,6 +77,31 @@ When a broadcast arrives:
 
 Because the render function was compiled at boot time and the data payload is minimal, re-renders are fast and require no round-trip to generate HTML on the server.
 
+### Hooking into the morph
+
+`morphHooks` runs your own code inside the morph, for every component, without touching a template. Push an object with any of Idiomorph's callbacks (`beforeNodeAdded`, `afterNodeAdded`, `beforeNodeMorphed`, `afterNodeMorphed`, `beforeNodeRemoved`, `afterNodeRemoved`, `beforeAttributeUpdated`):
+
+```javascript
+import { morphHooks } from "reactive_component/lib/reactive_renderer_utils"
+
+// Tint a number that changed, green when it went up, red when it went down.
+morphHooks.push({
+  beforeNodeMorphed(oldNode, newNode) {
+    if (oldNode.nodeType !== Node.TEXT_NODE) return
+
+    const before = Number(oldNode.nodeValue)
+    const after = Number(newNode.nodeValue)
+    if (Number.isNaN(before) || Number.isNaN(after) || before === after) return
+
+    oldNode.parentElement?.classList.add(after > before ? "flash-up" : "flash-down")
+  }
+})
+```
+
+A hook returning `false` cancels that node, the same contract Idiomorph uses: `beforeNodeMorphed` returning `false` leaves the node untouched, `beforeNodeRemoved` keeps it on the page. Every hook runs even when one of them returns `false`. Hooks need `window.Idiomorph`; without it a re-render replaces `innerHTML` and no callback fires.
+
+Keep them cheap. They run per node, for every push, on every component.
+
 ## The Wrapper Element
 
 The `Wrapper` module is responsible for generating the outer `<div>` that ties everything together. It sets the Stimulus `data-controller` attribute and populates the data values the controller needs:

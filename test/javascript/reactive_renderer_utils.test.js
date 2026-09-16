@@ -8,6 +8,7 @@ import {
   morphElement,
   duplicateIds,
   strictData,
+  morphHooks,
 } from "reactive_component/lib/reactive_renderer_utils"
 
 describe("isBase64", () => {
@@ -233,11 +234,43 @@ describe("morphElement", () => {
 
     expect(morphMock).toHaveBeenCalledOnce()
     expect(morphMock.mock.calls[0][0]).toBe(element)
-    expect(morphMock.mock.calls[0][2]).toEqual({
+    expect(morphMock.mock.calls[0][2]).toMatchObject({
       morphStyle: "innerHTML",
       ignoreActiveValue: true,
     })
 
+    delete globalThis.Idiomorph
+  })
+
+  it("fans Idiomorph callbacks out to registered morph hooks", () => {
+    const morphMock = vi.fn()
+    globalThis.Idiomorph = { morph: morphMock }
+    const hook = { beforeNodeMorphed: vi.fn(), afterNodeMorphed: vi.fn() }
+    morphHooks.push(hook)
+
+    morphElement(element, "<p>morphed</p>")
+    const { callbacks } = morphMock.mock.calls[0][2]
+    callbacks.beforeNodeMorphed("old", "new")
+
+    expect(hook.beforeNodeMorphed).toHaveBeenCalledWith("old", "new")
+    expect(hook.afterNodeMorphed).not.toHaveBeenCalled()
+
+    morphHooks.length = 0
+    delete globalThis.Idiomorph
+  })
+
+  it("cancels a node when one hook returns false", () => {
+    const morphMock = vi.fn()
+    globalThis.Idiomorph = { morph: morphMock }
+    morphHooks.push({ beforeNodeMorphed: () => false }, { beforeNodeMorphed: () => true })
+
+    morphElement(element, "<p>morphed</p>")
+    const { callbacks } = morphMock.mock.calls[0][2]
+
+    expect(callbacks.beforeNodeMorphed("old", "new")).toBe(false)
+    expect(callbacks.beforeNodeAdded("node")).toBe(true)
+
+    morphHooks.length = 0
     delete globalThis.Idiomorph
   })
 
