@@ -7,6 +7,14 @@
   morph, for flashing changed values and similar page-wide behaviour, without
   subclassing the controller. See Hooking into the morph.
 
+### Fixed
+- An app that does not eager load (development, test) broadcast nothing from a
+  process that had not rendered the subscribing component yet, such as a job or
+  a turbo-stream request. The engine now loads the components under
+  `app/components` that include `ReactiveComponent` on boot and after each
+  reload, and only those, so the rest of the app keeps lazy loading. Set
+  `ReactiveComponent::SubscriberLoader.paths` to look elsewhere.
+
 ## [0.8.4] - 2026-09-16
 
 ### Added
