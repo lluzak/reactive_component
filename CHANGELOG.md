@@ -12,6 +12,15 @@
 - A morph leaves `[data-turbo-permanent]` elements alone, as Turbo's own morph
   does. An open menu marks itself permanent while it is open, and an update
   underneath it no longer closes it.
+- A `key` entity's dom id joins its parts with `_` instead of `-`
+  (`due_count_1_2`) and its gid with `/`. A page rendered before the deploy
+  routes broadcasts by the old id until it reloads.
+
+### Fixed
+- A `key` entity joined its id on `-`, so a part carrying a dash, a UUID for
+  instance, never split back: every lookup missed and a notify component
+  never re-rendered. The id is now the array of parts, the way Rails exposes
+  a composite primary key, and GlobalID and `dom_id` encode it themselves.
 
 ## [0.8.5] - 2026-09-16
 

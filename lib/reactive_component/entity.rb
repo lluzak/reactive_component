@@ -36,6 +36,7 @@ module ReactiveComponent
   #   end
   module Entity
     extend ActiveSupport::Concern
+
     include ActiveModel::Model
     include Broadcastable
     include GlobalID::Identification
@@ -49,7 +50,7 @@ module ReactiveComponent
     # Turbo's `stream_name_from` prefers `to_gid_param`, so an entity names its
     # own stream. `to_param` stays as the fallback for when `GlobalID.app`
     # isn't set: a bare id would collide with every other entity sharing it.
-    def to_param = "#{self.class.model_name.param_key}/#{id}"
+    def to_param = "#{self.class.model_name.param_key}/#{to_key.join('/')}"
 
     class_methods do
       # The record the entity is keyed on. Defines `initialize(<name>:)`, the
@@ -67,7 +68,10 @@ module ReactiveComponent
       end
 
       # An entity keyed on plain values instead of a record. Defines an `id`
-      # that joins the values the way Rails joins a composite primary key, the
+      # that is the array of values, the way Rails exposes a composite primary
+      # key: `dom_id` joins them with `_` and GlobalID escapes each on its own,
+      # so a part may carry a dash or a colon. `primary_key` names the parts
+      # for GlobalID's arity check. Also defines the
       # `find` / `find_by(id:)` the channel and actions controller need, and,
       # as defaults you can replace, the readers, `initialize(company_id:,
       # user_id:)` and `from_key`. A key with the wrong arity resolves to nil
@@ -95,11 +99,12 @@ module ReactiveComponent
         attr_reader(*names)
 
         define_method(:initialize) { |**kwargs| names.each { |n| instance_variable_set(:"@#{n}", kwargs.fetch(n)) } }
-        define_method(:id) { names.map { |n| public_send(n) }.join('-') }
+        define_method(:id) { names.map { |n| public_send(n) } }
+        define_singleton_method(:primary_key) { names }
 
         define_singleton_method(:from_key) { |**values| new(**values) }
         define_singleton_method(:find_by) do |id:|
-          values = id.to_s.split('-')
+          values = Array(id)
           from_key(**names.zip(values).to_h) if values.size == names.size
         end
         define_singleton_method(:find) { |id| find_by(id: id) }
