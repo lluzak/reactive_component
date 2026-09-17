@@ -3,11 +3,6 @@ import { createConsumer } from "@rails/actioncable"
 import { compileTemplate, decompress, morphElement, buildActionBody, routeMessage, duplicateIds, strictData } from "reactive_component/lib/reactive_renderer_utils"
 
 const consumer = createConsumer()
-const log = (...args) => {
-  if (localStorage.getItem("devToolbar:debug") !== "false") {
-    console.log("[reactive-renderer]", ...args)
-  }
-}
 
 function findSubscription(streamValue) {
   const identifier = JSON.stringify({ channel: "ReactiveComponent::Channel", signed_stream_name: streamValue })
@@ -113,6 +108,14 @@ export default class extends Controller {
     this.element.removeAttribute("data-reactive-renderer-connected")
   }
 
+  // ReactiveComponent.debug marks the wrapper, so the gem is quiet unless the
+  // app turns debugging on server-side.
+  log(...args) {
+    if (this.element.hasAttribute("data-reactive-debug")) {
+      console.log("[reactive-renderer]", ...args)
+    }
+  }
+
   resolveTemplate() {
     if (this.hasTemplateValue) return this.templateValue
 
@@ -129,18 +132,18 @@ export default class extends Controller {
 
     switch (route.type) {
       case "render":
-        log("render", this.element.id, route.data)
+        this.log("render", this.element.id, route.data)
         this.lastServerData = route.data
         if (this.renderFn) this.render({ ...route.data, ...this.clientState })
         break
 
       case "request_update":
-        log("update", this.element.id, { action: message.action, strategy: "notify" })
+        this.log("update", this.element.id, { action: message.action, strategy: "notify" })
         this.requestUpdate()
         break
 
       case "update":
-        log("update", this.element.id, route.data)
+        this.log("update", this.element.id, route.data)
         this.lastServerData = route.data
         if (this.renderFn) this.render({ ...route.data, ...this.clientState })
         this.element.dispatchEvent(new CustomEvent("reactive-renderer:updated", {

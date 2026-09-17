@@ -45,8 +45,15 @@ module ReactiveComponent
 
       if client_state
         attrs << %(data-reactive-renderer-state-value="#{ERB::Util.html_escape(client_state.to_json)}")
-        initial_data = component_class.build_data(record, **client_state.symbolize_keys)
-        attrs << %(data-reactive-renderer-data-value="#{ERB::Util.html_escape(initial_data.to_json)}")
+
+        # A push wrapper renders from this payload until the first broadcast
+        # arrives. A notify one asks the server for its data instead, so the
+        # attribute would be the page a second time, both branches of every
+        # extracted expression included.
+        unless strategy.to_s == 'notify'
+          initial_data = component_class.build_data(record, **client_state.symbolize_keys)
+          attrs << %(data-reactive-renderer-data-value="#{ERB::Util.html_escape(initial_data.to_json)}")
+        end
       end
 
       attrs << %(data-reactive-renderer-strategy-value="#{strategy}") if strategy

@@ -155,6 +155,6 @@ To get additional diagnostic information, enable debug mode in an initializer:
 ReactiveComponent.debug = true
 ```
 
-When debug mode is active, ReactiveComponent adds `data-reactive-debug` attributes to wrapper elements and serves component templates as plain text, making it easier to inspect what is being rendered and broadcast.
+When debug mode is active, ReactiveComponent adds `data-reactive-debug` attributes to wrapper elements and serves component templates as plain text, making it easier to inspect what is being rendered and broadcast. Those attributes are also what the renderer logs against: every render and update a marked wrapper handles is printed to the console under `[reactive-renderer]`. Outside debug mode the renderer prints nothing but genuine errors.
 
 Disable debug mode before deploying to production.
