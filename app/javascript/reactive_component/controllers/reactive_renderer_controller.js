@@ -171,7 +171,9 @@ export default class extends Controller {
         component: this.componentValue,
         sgid: this.sgidValue,
         dom_id: this.element.id,
-        params: this.paramsValue
+        // The channel reads client state off params, so the server renders the
+        // state the component is in now, not the one the page was built with.
+        params: { ...this.paramsValue, ...this.clientState }
       })
     }, 50)
   }
@@ -265,16 +267,23 @@ export default class extends Controller {
               changed = true
             }
           }
-          if (changed && ctrl.lastServerData && ctrl.renderFn) {
-            requestAnimationFrame(() => ctrl.render({ ...ctrl.lastServerData, ...ctrl.clientState }))
-          }
+          if (changed) ctrl.rerender()
         })
       }
     }
 
     Object.assign(this.clientState, updates)
+    this.rerender()
+  }
+
+  // A push component holds the data it needs. A notify one may not have any
+  // yet, its payload arrives on request, so a state change asks for it rather
+  // than leaving the click with nothing to show.
+  rerender() {
     if (this.lastServerData && this.renderFn) {
       requestAnimationFrame(() => this.render({ ...this.lastServerData, ...this.clientState }))
+    } else if (this.strategyValue === "notify") {
+      this.requestUpdate()
     }
   }
 
