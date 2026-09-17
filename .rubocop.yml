@@ -89,6 +89,10 @@ Rails/ApplicationController:
   Exclude:
     - 'app/controllers/reactive_component/actions_controller.rb'
 
+Rails/ApplicationJob:
+  Exclude:
+    - 'app/jobs/reactive_component/broadcast_job.rb'
+
 # Gem rake tasks don't need the Rails environment
 Rails/RakeEnvironment:
   Enabled: false

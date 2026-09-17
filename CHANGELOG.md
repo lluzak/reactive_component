@@ -9,6 +9,11 @@
   `live_wrapper_options`. An instance cannot switch such a class back to push.
 
 ### Changed
+- A broadcast now runs in an Active Job (`ReactiveComponent::BroadcastJob`)
+  instead of inside the request that committed the record, so rendering a
+  payload no longer holds the response. `subscribes_to ..., later: false`
+  keeps it inline. A destroy always broadcasts inline. The request id rides
+  along, so `skip_own_broadcasts` keeps working.
 - A morph leaves `[data-turbo-permanent]` elements alone, as Turbo's own morph
   does. An open menu marks itself permanent while it is open, and an update
   underneath it no longer closes it.

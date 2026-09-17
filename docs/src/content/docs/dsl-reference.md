@@ -18,7 +18,7 @@ end
 
 ---
 
-## `subscribes_to(attr_name, class_name: nil, only: %i[create update destroy], fields: nil)`
+## `subscribes_to(attr_name, class_name: nil, only: %i[create update destroy], fields: nil, strategy: nil, later: true)`
 
 Declares which instance variable holds the model record that drives the component. Calling this method also **automatically wires the model** — no changes to the model class are needed. ReactiveComponent includes `ReactiveComponent::Broadcastable` on the model and registers `after_create_commit`, `after_update_commit`, and `after_destroy_commit` callbacks that trigger broadcasts.
 
@@ -30,6 +30,8 @@ Declares which instance variable holds the model record that drives the componen
 | `class_name:` | `String` or `nil` | Optional explicit model class name. Use this when the class name cannot be inferred from the attribute name (e.g. namespaced models). |
 | `only:` | `Symbol` or `Array<Symbol>` | Limits which lifecycle events trigger a broadcast. Accepts any combination of `:create`, `:update`, `:destroy`. Defaults to all three. |
 | `fields:` | `Symbol` or `Array<Symbol>` or `nil` | Limits updates to changes in these columns. Creates, destroys, and manual `broadcast_reactive_update` calls always broadcast. Defaults to `nil` (any column). |
+| `strategy:` | `Symbol` or `nil` | `:notify` makes every instance ask the server for its render instead of reading the broadcast payload, and a broadcast then carries only the signal. See Notify Mode. |
+| `later:` | `Boolean` | Broadcast from an Active Job instead of inside the request that committed the record. Defaults to `true`; pass `false` to broadcast inline. A destroy always broadcasts inline, since the record is gone by the time a job would look it up. The request id travels with the job, so `skip_own_broadcasts` still works. |
 
 **Examples:**
 
