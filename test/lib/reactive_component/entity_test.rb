@@ -105,24 +105,32 @@ class ReactiveComponent::EntityKeyTest < ActiveSupport::TestCase
 
     assert_equal 1, count.company_id
     assert_equal 2, count.user_id
-    assert_equal '1-2', count.id
-    assert_equal 'entity_key_test_due_count/1-2', count.to_param
+    assert_equal [1, 2], count.id
+    assert_equal 'entity_key_test_due_count/1/2', count.to_param
+    assert_equal 'entity_key_test_due_count_1_2', ActionView::RecordIdentifier.dom_id(count)
   end
 
-  test 'find and find_by parse the joined id back into the key' do
-    assert_equal %w[1 2], [DueCount.find('1-2').company_id, DueCount.find('1-2').user_id]
-    assert_equal '1-2', DueCount.find_by(id: '1-2').id
+  test 'find and find_by rebuild the entity from its parts' do
+    assert_equal %w[1 2], [DueCount.find(%w[1 2]).company_id, DueCount.find(%w[1 2]).user_id]
+    assert_equal %w[1 2], DueCount.find_by(id: %w[1 2]).id
+  end
+
+  test 'a key part carrying a dash or a colon survives the round trip through a global id' do
+    count = DueCount.new(company_id: '194f906d-3474-4411-959d-17711e1622ad', user_id: 'a:b')
+    located = GlobalID::Locator.locate(count.to_gid_param)
+
+    assert_equal [count.company_id, count.user_id], [located.company_id, located.user_id]
   end
 
   test 'a keyed entity round trips through a global id' do
     located = GlobalID::Locator.locate(DueCount.new(company_id: 1, user_id: 2).to_gid_param)
 
-    assert_equal '1-2', located.id
+    assert_equal %w[1 2], located.id
   end
 
   test 'a key of the wrong arity resolves to nil instead of raising' do
     assert_nil DueCount.find('1')
-    assert_nil DueCount.find_by(id: '1-2-3')
+    assert_nil DueCount.find_by(id: %w[1 2 3])
     assert_nil DueCount.find_by(id: nil)
   end
 end
@@ -228,11 +236,11 @@ class ReactiveComponent::EntityCustomKeyTest < ActiveSupport::TestCase
   end
 
   test 'a custom initializer still keys the entity off the named readers' do
-    assert_equal "#{@alice.id}-#{@bob.id}", Thread.new(@alice, @bob).id
+    assert_equal [@alice.id, @bob.id], Thread.new(@alice, @bob).id
   end
 
   test 'find rebuilds through from_key, not through new' do
-    found = Thread.find("#{@alice.id}-#{@bob.id}")
+    found = Thread.find([@alice.id, @bob.id])
 
     assert_equal @alice, found.sender
     assert_equal @bob, found.recipient

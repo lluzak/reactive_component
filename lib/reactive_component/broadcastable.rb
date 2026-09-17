@@ -28,7 +28,7 @@ module ReactiveComponent
     end
 
     def broadcast_reactive(action)
-      reactive_component_classes.each { |klass| ReactiveComponent.broadcast_for(klass, self, action: action) }
+      reactive_component_classes.each { |klass| _broadcast_reactive_for(klass, action) }
     end
 
     def broadcast_reactive_update  = broadcast_reactive(:update)
@@ -44,10 +44,20 @@ module ReactiveComponent
         fields = klass._subscribed_fields
         next if fields && !saved_changes.keys.intersect?(fields)
 
-        ReactiveComponent.broadcast_for(klass, self, action: :update)
+        _broadcast_reactive_for(klass, :update)
       end
     end
 
     def _broadcast_reactive_destroy = broadcast_reactive(:destroy)
+
+    # A destroyed record cannot ride a job: it is gone by the time the job
+    # looks it up. Its signal is cheap, so it goes out inline. So does a
+    # component the job could not find by name, an anonymous class in a test.
+    def _broadcast_reactive_for(klass, action)
+      later = action != :destroy && klass.name && klass.try(:_broadcast_later)
+      return ReactiveComponent.broadcast_for(klass, self, action: action) unless later
+
+      ReactiveComponent::BroadcastJob.perform_later(klass.name, self, action.to_s, Turbo.current_request_id)
+    end
   end
 end

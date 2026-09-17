@@ -5,6 +5,7 @@
 # Entities and signed stream ids are GlobalIDs. ActiveJob pulls this railtie in
 # for its own arguments; an app without ActiveJob would otherwise have no
 # `GlobalID.app` and could not create one.
+require 'active_job/railtie'
 require 'global_id/railtie'
 
 module ReactiveComponent

@@ -48,12 +48,22 @@ end
 
 | Key | Description |
 |:----|:------------|
-| `strategy` | `:notify` to turn notify mode on. Anything else, or no key, keeps push. |
+| `strategy` | `:notify` to turn notify mode on. Anything else, or no key, keeps push, unless the class declares notify (below). |
 | `params` | A hash sent back to the server with every re-render request and passed to the filter. |
 | `component_name` | The component class the server renders. Defaults to the component's own class. |
 | `skip_own_broadcasts` | Skip the re-render request after this component's own `live_action`. Defaults to [`ReactiveComponent.skip_own_broadcasts`](/reactive_component/configuration/#reactivecomponentskip_own_broadcasts). |
 
 A notify wrapper also carries a signed id of its record, minted for this gem alone. It is what the server resolves the re-render request against, so nothing has to trust a raw id from the page.
+
+## Declaring it on the class
+
+When every instance notifies, declare it on `subscribes_to` instead:
+
+```ruby
+subscribes_to :message, strategy: :notify
+```
+
+A broadcast then carries only the signal, not a rendered payload nobody would read, and `live_wrapper_options` is only needed for `params` and the other keys. Such a class cannot be switched back to push per instance: the broadcast has no data for a push client to render, so `render_in` raises if `live_wrapper_options` tries.
 
 ## Filtering
 

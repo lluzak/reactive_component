@@ -67,6 +67,79 @@ class ReactiveComponent::SubscribesToTest < ActiveSupport::TestCase
     assert_nil klass.live_model_class
   end
 
+  test 'subscribes_to strategy: :notify broadcasts a signal rather than a render' do
+    klass = Class.new(ApplicationComponent) do
+      include ReactiveComponent
+
+      subscribes_to :message, strategy: :notify
+
+      def call = raise('a notify broadcast must not render')
+    end
+    stub_const('NotifyOnlyComponent', klass)
+
+    assert_predicate NotifyOnlyComponent, :notify?
+
+    sender = Contact.create!(name: 'Sam')
+    message = Message.create!(subject: 'hi', body: 'there', sender: sender, recipient: sender)
+    payload = nil
+    ReactiveComponent::Channel.stub(:broadcast_data, ->(_stream, action:, data:) { payload = [action, data] }) do
+      ReactiveComponent.broadcast_for(NotifyOnlyComponent, message, action: :update)
+    end
+
+    assert_equal :update, payload.first
+    assert_equal %w[id dom_id], payload.last.keys
+  end
+
+  test 'a broadcast rides a job by default, carrying the request id' do
+    sender = Contact.create!(name: 'Sam')
+    message = Message.create!(subject: 'hi', body: 'there', sender: sender, recipient: sender)
+    calls = []
+
+    ReactiveComponent::BroadcastJob.stub(:perform_later, ->(*args) { calls << args }) do
+      Turbo.with_request_id('req-1') { message.update!(subject: 'changed') }
+    end
+
+    assert_includes calls, ['MessageRowComponent', message, 'update', 'req-1']
+  end
+
+  test 'the job broadcasts under the request id it was given' do
+    sender = Contact.create!(name: 'Sam')
+    message = Message.create!(subject: 'hi', body: 'there', sender: sender, recipient: sender)
+    seen = []
+
+    ReactiveComponent::Channel.stub(:broadcast_data, ->(_stream, **) { seen << Turbo.current_request_id }) do
+      ReactiveComponent::BroadcastJob.perform_now('MessageRowComponent', message, 'update', 'req-2')
+    end
+
+    assert_equal ['req-2'], seen
+    assert_nil Turbo.current_request_id
+  end
+
+  test 'later: false and a destroy broadcast inline' do
+    klass = Class.new(ApplicationComponent) do
+      include ReactiveComponent
+
+      subscribes_to :message, strategy: :notify, later: false
+    end
+    stub_const('InlineComponent', klass)
+
+    sender = Contact.create!(name: 'Sam')
+    message = Message.create!(subject: 'hi', body: 'there', sender: sender, recipient: sender)
+    enqueued = []
+    sent = []
+
+    ReactiveComponent::BroadcastJob.stub(:perform_later, ->(*args) { enqueued << args }) do
+      ReactiveComponent::Channel.stub(:broadcast_data, ->(_stream, action:, data:) { sent << [action, data['dom_id']] }) do
+        message.update!(subject: 'changed')
+        message.destroy!
+      end
+    end
+
+    assert_includes sent, [:update, InlineComponent.dom_id_for(message)]
+    assert_includes sent, [:destroy, MessageRowComponent.dom_id_for(message)]
+    assert_empty(enqueued.select { |args| args.first == 'InlineComponent' || args.third == 'destroy' })
+  end
+
   private
 
   def stub_const(name, value)
@@ -79,12 +152,20 @@ class ReactiveComponent::SubscribesToTest < ActiveSupport::TestCase
     parent.const_set(parts.last, value) unless parent.const_defined?(parts.last, false)
 
     @stubbed_consts ||= []
-    @stubbed_consts << [Object, parts.first]
+    @stubbed_consts << [Object, parts.first, value]
   end
 
+  # A component registers itself on its model, and a broadcast job looks it
+  # up by name, so it must leave the model with its constant.
   def teardown
-    (@stubbed_consts || []).each do |parent, const_name|
+    (@stubbed_consts || []).each do |parent, const_name, value|
       parent.send(:remove_const, const_name) if parent.const_defined?(const_name, false)
+      unregister(value) if value.respond_to?(:live_model_class)
     end
+  end
+
+  def unregister(component_class)
+    model = component_class.live_model_class
+    model.reactive_component_classes = model.reactive_component_classes - [component_class]
   end
 end

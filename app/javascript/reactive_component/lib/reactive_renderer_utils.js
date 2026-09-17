@@ -44,9 +44,20 @@ const HOOK_NAMES = [
   'beforeNodeRemoved', 'afterNodeRemoved', 'beforeAttributeUpdated'
 ]
 
+// Turbo's convention: an element marked permanent is left as it is. A menu
+// that is open, or anything else the page is in the middle of, says so with
+// the attribute and the morph steps over it. Like Turbo's, it needs an id, so
+// the morph pairs it with its counterpart instead of adding a second copy.
+const isPermanent = (node) => node.nodeType === Node.ELEMENT_NODE && node.id !== "" && node.hasAttribute("data-turbo-permanent")
+
+const skipPermanent = {
+  beforeNodeMorphed: (currentNode) => !isPermanent(currentNode),
+  beforeNodeRemoved: (node) => !isPermanent(node)
+}
+
 const morphCallbacks = Object.fromEntries(HOOK_NAMES.map(name => [
   name,
-  (...args) => morphHooks.reduce((ok, hook) => (hook[name]?.(...args) === false ? false : ok), true)
+  (...args) => [skipPermanent, ...morphHooks].reduce((ok, hook) => (hook[name]?.(...args) === false ? false : ok), true)
 ]))
 
 export function morphElement(element, newHtml) {
