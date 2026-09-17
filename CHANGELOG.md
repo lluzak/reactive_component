@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.9.1] - 2026-09-17
 
 ### Changed
 - The renderer logs every render and update only when `ReactiveComponent.debug`
