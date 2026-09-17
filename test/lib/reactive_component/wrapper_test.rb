@@ -95,6 +95,14 @@ class ReactiveComponent::WrapperTest < ActiveSupport::TestCase
     assert_includes html, 'data-reactive-renderer-data-value='
   end
 
+  test 'wrap carries client state but no data payload for a notify wrapper' do
+    html = ReactiveComponent::Wrapper.wrap(MessageRowComponent, @message, '<p>inner</p>',
+                                           client_state: { 'selected' => false }, strategy: :notify)
+
+    assert_includes html, 'data-reactive-renderer-state-value='
+    assert_not_includes html, 'data-reactive-renderer-data-value='
+  end
+
   test 'wrap omits state when client_state nil' do
     html = ReactiveComponent::Wrapper.wrap(MessageRowComponent, @message, '<p>inner</p>', client_state: nil)
 

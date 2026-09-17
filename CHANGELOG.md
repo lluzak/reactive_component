@@ -1,5 +1,17 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+- The renderer logs every render and update only when `ReactiveComponent.debug`
+  is on, which it reads from the `data-reactive-debug` attribute already on the
+  wrapper. It used to log everywhere, production included, unless a
+  `devToolbar:debug` key in `localStorage` was set to the string `"false"`.
+- A notify wrapper with client state no longer embeds its initial data payload.
+  It asks the server to render it, so the attribute was the page a second time,
+  carrying every branch of every extracted expression. A push wrapper keeps it:
+  it renders from that payload until the first broadcast arrives.
+
 ## [0.9.0] - 2026-09-17
 
 ### Added
