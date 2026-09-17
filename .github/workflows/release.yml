@@ -37,13 +37,28 @@ jobs:
       - name: Build gem
         run: gem build reactive_component.gemspec
 
+      # A re-run, after fixing whatever failed further down the job, finds the
+      # work an earlier attempt already did. Creating a release that exists is
+      # an error, and so is publishing a version that is already on npm, so
+      # each step skips what is already there and the job can be re-run.
       - name: Create GitHub release
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists, leaving it alone"
+            exit 0
+          fi
           awk -v v="## [$VERSION]" 'index($0, v) == 1 {on=1; next} /^## \[/ {on=0} on' CHANGELOG.md > notes.md
           gh release create "$GITHUB_REF_NAME" "reactive_component-$VERSION.gem" --title "$GITHUB_REF_NAME" --notes-file notes.md --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}
 
       - name: Publish JS package to npm
-        run: npm publish
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          PACKAGE="$(node -p 'require("./package.json").name')"
+          if [ -n "$(npm view "$PACKAGE@$VERSION" version 2> /dev/null)" ]; then
+            echo "$PACKAGE@$VERSION is already published"
+            exit 0
+          fi
+          npm publish
