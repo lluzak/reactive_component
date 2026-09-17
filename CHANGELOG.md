@@ -7,6 +7,10 @@
   is on, which it reads from the `data-reactive-debug` attribute already on the
   wrapper. It used to log everywhere, production included, unless a
   `devToolbar:debug` key in `localStorage` was set to the string `"false"`.
+- A client-state change on a notify component that has no data yet asks the
+  server to render it instead of doing nothing, and an update request carries
+  the state the component is in now rather than the one the page was built
+  with.
 - A notify wrapper with client state no longer embeds its initial data payload.
   It asks the server to render it, so the attribute was the page a second time,
   carrying every branch of every extracted expression. A push wrapper keeps it:
