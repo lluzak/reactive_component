@@ -371,3 +371,28 @@ Client state fields are:
 - Updated on the client only — they never trigger a server request or broadcast
 
 **Inside a `.each` loop**, read client state only on its own (`<% if @compact %>`, `data-open="<%= @open %>"`). A comparison that also touches the loop variable — `<% if @expanded == item.id %>` — depends on the item, so it is evaluated on the server per item and cannot follow a client-side toggle. Put the state on a `data-` attribute and let CSS (or a small Stimulus controller) apply it per row, or make the row its own nested component with its own client state.
+
+## `const(html)`
+
+Server-rendered HTML that cannot differ between two renders of the template —
+an icon, a static fragment, anything that depends on neither the record nor
+client state:
+
+```erb
+<%= const(render(IconComponent.new(name: "chevron-down"))) %>
+```
+
+Without `const`, that render is an extracted expression like any other: the
+server runs it and the payload carries its HTML, on every update, unchanged
+each time. With `const`, the compiler runs it once while compiling the
+template and keeps the result inside the compiled template, which already
+travels with the page. The payload carries nothing for it.
+
+It follows that a const only changes when the template is compiled again, so
+it is the wrong tool for anything that varies by locale, company or theme —
+those belong in an ordinary expression. Reading a local or a loop variable
+raises `ReactiveComponent::CompileError`, since neither is the same on every
+render.
+
+Rendering the component on the server passes the HTML straight through, so
+the page and the updates agree.

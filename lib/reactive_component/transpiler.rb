@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'digest'
+
 require 'json'
 require 'set'
 require 'prism'
@@ -171,6 +173,7 @@ module ReactiveComponent
       end
 
       def call_output(node)
+        return const_output(node.arguments.arguments.first) if const_call?(node)
         return raw_output(node.arguments.arguments.first) if raw_call?(node)
         return emit_append(tag_call(node)) if tag_builder?(node.receiver)
 
@@ -187,6 +190,17 @@ module ReactiveComponent
         end
 
         emit_append("String(#{expr(node)})")
+      end
+
+      # `const(expr)` — server-computed HTML that cannot differ between two
+      # renders of this template. Evaluated once when the template compiles and
+      # baked into it, so it travels with the page instead of every payload.
+      def const_output(inner)
+        if contains_lvar?(inner) || (in_block? && contains_block_var?(inner))
+          raise CompileError, "`const(#{inner.slice})` reads a local, so it is not the same on every render"
+        end
+
+        emit_append(const_key(source_of(inner)))
       end
 
       # `raw(expr)` — an explicit declaration of server-computed HTML
@@ -477,6 +491,14 @@ module ReactiveComponent
         @extraction[:raw_fields] = @raw_fields.dup
       end
 
+      # Keyed by the source itself, so a const embedded from a nested template
+      # merges into the parent's table instead of colliding with it.
+      def const_key(source)
+        key = "c#{Digest::SHA1.hexdigest(source)[0, 8]}"
+        (@extraction[:const_expressions] ||= {})[key] = source
+        "_const.#{key}"
+      end
+
       def next_key
         key = "v#{@key_counter}"
         @key_counter += 1
@@ -489,6 +511,7 @@ module ReactiveComponent
 
       def buf?(node) = node.is_a?(Prism::LocalVariableReadNode) && node.name == @buf
       def raw_call?(node) = node.receiver.nil? && node.name == :raw && node.arguments&.arguments&.size == 1
+      def const_call?(node) = node.receiver.nil? && node.name == :const && node.arguments&.arguments&.size == 1
       def tag_builder?(node) = node.is_a?(Prism::CallNode) && node.receiver.nil? && node.name == :tag && node.arguments.nil?
 
       def render_component_call?(node)

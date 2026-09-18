@@ -10,6 +10,7 @@ require_relative 'reactive_component/wrapper'
 require_relative 'reactive_component/broadcastable'
 require_relative 'reactive_component/subscriber_loader'
 require_relative 'reactive_component/entity'
+require_relative 'reactive_component/template_helpers'
 require_relative 'reactive_component/engine' if defined?(Rails::Engine)
 
 module ReactiveComponent
@@ -31,6 +32,8 @@ module ReactiveComponent
   class CompileError < Error; end
 
   included do
+    include ReactiveComponent::TemplateHelpers
+
     class_attribute :_live_model_attr, instance_writer: false
     class_attribute :_live_model_class_name, instance_writer: false
     class_attribute :_live_actions, instance_writer: false, default: {}
@@ -53,12 +56,8 @@ module ReactiveComponent
     stream = ReactiveComponent::Wrapper.find_stream_for(self.class, record)
 
     client_state = if self.class._client_state_fields.any?
-                     kwargs = {}
-                     self.class._client_state_fields.each_key do |name|
-                       val = instance_variable_get(:"@#{name}")
-                       kwargs[name] = val unless val.nil?
-                     end
-                     self.class.client_state_values(**kwargs)
+                     values = self.class._client_state_fields.keys.index_with { |name| instance_variable_get(:"@#{name}") }
+                     self.class.client_state_values(**values.compact)
                    end
 
     extra_opts = respond_to?(:live_wrapper_options, true) ? live_wrapper_options : {}

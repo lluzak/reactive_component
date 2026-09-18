@@ -3,6 +3,10 @@
 ## [Unreleased]
 
 ### Added
+- `const(html)` in a template marks server-rendered HTML that cannot differ
+  between renders — an icon, a static fragment. The compiler evaluates it once
+  and keeps it in the compiled template, so it travels with the page instead of
+  with every payload, and changes only when the template is compiled again.
 - `ReactiveComponent.compress`, set once in an initializer like `debug`.
   `ReactiveComponent::Channel.compress` lived on an autoloaded class, so an app
   had to set it in `to_prepare` or lose it on the first reload. It still works

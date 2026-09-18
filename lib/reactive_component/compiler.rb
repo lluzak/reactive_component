@@ -92,6 +92,7 @@ module ReactiveComponent
       end
 
       expressions = extraction[:expressions] || {}
+      const_values = evaluate_consts(component_class, extraction[:const_expressions] || {})
       raw_fields = extraction[:raw_fields] || Set.new
       collection_computed = extraction[:collection_computed] || {}
       nested_components = extraction[:nested_components] || {}
@@ -112,6 +113,7 @@ module ReactiveComponent
         child_class = info[:class_name].constantize
         embedded_classes << child_class.name
         child_compiled = compile(child_class)
+        const_values.merge!(child_compiled[:const_values])
         child_body = unwrap_function(
           child_compiled[:raw_js_function],
           child_compiled[:fields],
@@ -139,6 +141,7 @@ module ReactiveComponent
 
           child_class = nc_class_name.constantize
           child_compiled = compile(child_class)
+          const_values.merge!(child_compiled[:const_values])
           fn_name = nc_class_name.underscore
           child_body = unwrap_function(
             child_compiled[:raw_js_function],
@@ -159,11 +162,13 @@ module ReactiveComponent
       fields = (expressions.keys + simple_ivars + nested_components.keys).uniq.sort
       parent_raw_body = strip_function_wrapper(js_function)
       js_body = "#{ESCAPE_FN_JS}#{TAG_FN_JS}#{nested_functions_js}"
+      js_body += "const _const = #{JSON.generate(const_values)};\n" if const_values.any?
       js_body += "let { #{fields.join(', ')} } = data;\n"
       js_body += add_html_escaping(parent_raw_body, raw_fields)
 
       {
         js_body: js_body,
+        const_values: const_values,
         fields: fields,
         expressions: expressions,
         simple_ivars: simple_ivars,
@@ -172,6 +177,23 @@ module ReactiveComponent
         raw_js_function: js_function,
         raw_fields: raw_fields
       }
+    end
+
+    # A `const(...)` is evaluated here, once, and its HTML is baked into the
+    # compiled template. It has no request and no record, the same as a
+    # broadcast render, and anything it cannot answer that way is a template
+    # bug rather than something to paper over at runtime.
+    def evaluate_consts(component_class, sources)
+      return {} if sources.empty?
+
+      evaluator = ReactiveComponent::DataEvaluator.new(nil, nil, component_class: component_class)
+
+      sources.transform_values do |source|
+        value = evaluator.evaluate(source)
+        raise ReactiveComponent::CompileError, "#{component_class.name}: `const(#{source})` rendered nothing" if value.nil?
+
+        value.to_s
+      end
     end
 
     def compile_js(component_class)
