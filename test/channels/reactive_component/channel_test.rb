@@ -6,8 +6,8 @@ class ReactiveComponent::ChannelTest < ActionCable::Channel::TestCase
   # --- broadcast_data class method ---
 
   test 'broadcast_data broadcasts uncompressed payload by default' do
-    original = ReactiveComponent::Channel.compress
-    ReactiveComponent::Channel.compress = false
+    original = ReactiveComponent.compress
+    ReactiveComponent.compress = false
 
     stream = ['test_stream']
     data = { 'dom_id' => 'component_1', 'id' => 1 }
@@ -19,12 +19,12 @@ class ReactiveComponent::ChannelTest < ActionCable::Channel::TestCase
       ReactiveComponent::Channel.broadcast_data(stream, action: :update, data: data)
     end
   ensure
-    ReactiveComponent::Channel.compress = original
+    ReactiveComponent.compress = original
   end
 
   test 'broadcast_data broadcasts compressed payload when compress enabled' do
-    original = ReactiveComponent::Channel.compress
-    ReactiveComponent::Channel.compress = true
+    original = ReactiveComponent.compress
+    ReactiveComponent.compress = true
 
     stream = ['test_stream']
     data = { 'dom_id' => 'component_1', 'id' => 1 }
@@ -32,11 +32,24 @@ class ReactiveComponent::ChannelTest < ActionCable::Channel::TestCase
     signed = Turbo::StreamsChannel.signed_stream_name(stream)
     stream_name = Turbo::StreamsChannel.verified_stream_name(signed)
 
-    assert_broadcasts(stream_name, 1) do
-      ReactiveComponent::Channel.broadcast_data(stream, action: :update, data: data)
-    end
+    ReactiveComponent::Channel.broadcast_data(stream, action: :update, data: data)
+
+    zipped = JSON.parse(broadcasts(stream_name).last)['z']
+    payload = JSON.parse(ActiveSupport::Gzip.decompress(Base64.strict_decode64(zipped)))
+
+    assert_equal 'component_1', payload.dig('data', 'dom_id')
   ensure
-    ReactiveComponent::Channel.compress = original
+    ReactiveComponent.compress = original
+  end
+
+  test 'Channel.compress still sets ReactiveComponent.compress' do
+    original = ReactiveComponent.compress
+    ReactiveComponent::Channel.compress = true
+
+    assert ReactiveComponent.compress
+    assert ReactiveComponent::Channel.compress
+  ensure
+    ReactiveComponent.compress = original
   end
 
   test 'broadcast_data tags the payload with the Turbo request id' do

@@ -30,13 +30,15 @@ ReactiveComponent.renderer = ApplicationController
 
 This is useful if your components call `render` for nested ViewComponents and the rendering requires application-specific route helpers or configuration that `ActionController::Base` does not provide.
 
-## `ReactiveComponent::Channel.compress`
+## `ReactiveComponent.compress`
 
 Enables gzip compression for ActionCable broadcasts. Defaults to `false`.
 
 ```ruby
-ReactiveComponent::Channel.compress = true
+ReactiveComponent.compress = true
 ```
+
+Set it once in an initializer, like `debug`. The older `ReactiveComponent::Channel.compress` still works, but the channel is autoloaded, so it has to be set in `to_prepare`.
 
 When enabled, broadcast payloads are JSON-encoded, gzip-compressed, and Base64-encoded before being sent over ActionCable. The client-side Stimulus controller automatically detects and decompresses these payloads. This can significantly reduce bandwidth for components with large data payloads.
 
@@ -106,9 +108,9 @@ Return `true` to re-render the component with this record, or `false` to remove 
 ReactiveComponent.debug = Rails.env.development?
 ReactiveComponent.renderer = ApplicationController
 ReactiveComponent.skip_own_broadcasts = false
+ReactiveComponent.compress = Rails.env.production?
 
 Rails.application.config.to_prepare do
-  ReactiveComponent::Channel.compress = Rails.env.production?
   ReactiveComponent::Channel.filter_callback = ->(record, params) {
     true # accept all by default
   }
