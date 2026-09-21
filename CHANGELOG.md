@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- `ReactiveComponent.compress`, set once in an initializer like `debug`.
+  `ReactiveComponent::Channel.compress` lived on an autoloaded class, so an app
+  had to set it in `to_prepare` or lose it on the first reload. It still works
+  and writes through to the new setting.
+
 ## [0.9.1] - 2026-09-17
 
 ### Changed

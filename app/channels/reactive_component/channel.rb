@@ -2,7 +2,12 @@
 
 module ReactiveComponent
   class Channel < ActionCable::Channel::Base
-    mattr_accessor :compress, default: false
+    # Kept for apps that set it here; ReactiveComponent.compress is the setting.
+    def self.compress = ReactiveComponent.compress
+
+    def self.compress=(value)
+      ReactiveComponent.compress = value
+    end
 
     class_attribute :filter_callback, default: nil
 
@@ -79,7 +84,7 @@ module ReactiveComponent
         payload = { action: action, data: data }
         payload[:request_id] = Turbo.current_request_id if Turbo.current_request_id
 
-        if compress
+        if ReactiveComponent.compress
           json = ActiveSupport::JSON.encode(payload)
           ActionCable.server.broadcast(stream_name, { z: Base64.strict_encode64(ActiveSupport::Gzip.compress(json)) })
         else
