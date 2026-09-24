@@ -20,7 +20,10 @@ module ReactiveComponent
       end
     end
 
+    # Best effort only: a killed tab or a dead worker never gets here, which is
+    # why the client-side TTL is what actually keeps a roster honest.
     def unsubscribed
+      broadcast_presence('presence_leave') if @announced
       stop_all_streams
     end
 
@@ -37,7 +40,77 @@ module ReactiveComponent
       end
     end
 
+    # Announce this viewer to everyone on the stream. The client sends state and
+    # only state — identity is stamped here from the connection, so a tampered
+    # payload can misreport what someone is doing but never who they are.
+    def announce(data)
+      return unless @stream_name && presence_identity
+
+      state = ReactiveComponent.sanitize_for_broadcast(data['state'] || {}, source: 'presence state')
+      return if state.to_json.bytesize > ReactiveComponent.presence_state_limit
+
+      # ActionCable echoes a broadcast back to its sender, so the client has to
+      # know its own identity to stay out of its own roster. Telling it here
+      # beats making the host app repeat the id in a data attribute. Every
+      # time, not once: controllers share one subscription per stream, so one
+      # that joins later would otherwise never hear it.
+      transmit({ 'action' => 'presence_self', 'user' => presence_identity })
+
+      @announced = true
+      broadcast_presence('presence', state: state)
+    end
+
+    # Cursors move far too fast for the roster stream. A sharer publishes to a
+    # stream named for them, and you receive it only after asking to, so a
+    # stream nobody watches costs one publish into an empty channel. Filtering
+    # in the browser would be no help: the frames would already have arrived.
+    def cursor(data)
+      return unless @stream_name && presence_identity
+
+      point = ReactiveComponent.sanitize_for_broadcast(data['cursor'], source: 'cursor')
+
+      ActionCable.server.broadcast(
+        cursor_stream(presence_identity['id']),
+        { 'action' => 'cursor', 'user' => presence_identity, 'cursor' => point }
+      )
+    end
+
+    def watch_cursor(data)
+      return unless @stream_name
+
+      stream_from cursor_stream(data['user_id'])
+    end
+
+    def unwatch_cursor(data)
+      return unless @stream_name
+
+      stop_stream_from cursor_stream(data['user_id'])
+    end
+
     private
+
+    # A child of the stream this connection already verified, so watching one
+    # needs no server-side roster to authorize. A publisher can only ever write
+    # to its own; a watcher names someone else's and, if that person never
+    # opted in, receives nothing.
+    def cursor_stream(user_id)
+      "#{@stream_name}:cursor:#{user_id.to_s.first(64)}"
+    end
+
+    def broadcast_presence(action, state: nil)
+      payload = { 'action' => action, 'user' => presence_identity }
+      payload['state'] = state if state
+
+      ActionCable.server.broadcast(@stream_name, payload)
+    end
+
+    # Resolved once per connection, not once per frame.
+    def presence_identity
+      return @presence_identity if defined?(@presence_identity)
+
+      identity = ReactiveComponent.presence_identity&.call(connection)
+      @presence_identity = identity && ReactiveComponent.sanitize_for_broadcast(identity, source: 'presence_identity')
+    end
 
     # The component must be a reactive component, the record must come from a
     # signed id this gem minted, and it must broadcast to the stream this

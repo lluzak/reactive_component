@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_16_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_12_000001) do
   create_table "contacts", force: :cascade do |t|
     t.string "avatar_url"
     t.datetime "created_at", null: false
@@ -37,6 +37,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_16_000001) do
     t.text "body", null: false
     t.datetime "created_at", null: false
     t.string "label", default: "inbox", null: false
+    t.integer "position", default: 0, null: false
     t.datetime "read_at"
     t.integer "recipient_id"
     t.integer "replied_to_id"
@@ -44,5 +45,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_16_000001) do
     t.boolean "starred", default: false, null: false
     t.string "subject", null: false
     t.datetime "updated_at", null: false
+    t.index ["label", "position"], name: "index_messages_on_label_and_position"
   end
 end

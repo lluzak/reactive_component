@@ -4,6 +4,7 @@ require 'active_support/core_ext/integer/time'
 require 'active_support/concern'
 
 require_relative 'reactive_component/version'
+require_relative 'reactive_component/broadcast_safety'
 require_relative 'reactive_component/compiler'
 require_relative 'reactive_component/data_evaluator'
 require_relative 'reactive_component/wrapper'
@@ -21,6 +22,14 @@ module ReactiveComponent
   mattr_accessor :action_token_ttl, default: 1.day
   # Whether a component ignores the broadcast caused by its own live_action.
   mattr_accessor :skip_own_broadcasts, default: false
+
+  # Called with the ActionCable connection, returns a Hash identifying the
+  # viewer, or nil to leave presence off for that connection.
+  mattr_accessor :presence_identity, default: nil
+
+  # Presence state is the only client-authored payload this gem broadcasts,
+  # so it needs a ceiling as well as a type check. Bytes of encoded JSON.
+  mattr_accessor :presence_state_limit, default: 1024
 
   class Error < StandardError; end
 
@@ -40,9 +49,16 @@ module ReactiveComponent
     class_attribute :_subscribed_fields, instance_writer: false, default: nil
     class_attribute :_strategy, instance_writer: false, default: nil
     class_attribute :_broadcast_later, instance_writer: false, default: true
+    class_attribute :_presence_fields, instance_writer: false, default: []
   end
 
   def render_in(view_context, &)
+    # The browser fills these from its roster. The server still renders the
+    # template once, so they need to be an empty collection rather than nil.
+    self.class._presence_fields.each do |name|
+      instance_variable_set(:"@#{name}", []) unless instance_variable_defined?(:"@#{name}")
+    end
+
     inner_html = super
     return inner_html unless self.class._live_model_attr
     return inner_html if @_skip_live_wrapper
@@ -71,55 +87,13 @@ module ReactiveComponent
     template_script ? (template_script + wrapped).html_safe : wrapped
   end
 
-  # Raised when an extracted template expression returns something that is
-  # not a primitive — e.g. a full ActiveRecord record, a custom object, or
-  # a Date/Time. Broadcast payloads are JSON-serialized and visible to every
-  # connected client, so letting a record through would leak every column
-  # (including `password_digest` and tokens). Rather than silently coerce,
-  # we raise so the developer fixes the template.
-  class UnsafeBroadcastValueError < StandardError; end
-
-  # Types that are safe to ship verbatim in a broadcast payload. Everything
-  # else must be converted in the template (e.g. `@user.name` instead of
-  # `@user`, `@date.iso8601` instead of `@date`).
-  SAFE_PRIMITIVE_TYPES = [NilClass, TrueClass, FalseClass, Integer, Float, String].freeze
-
-  def self.sanitize_for_broadcast(value, source: nil)
-    return value if value.nil? || value.is_a?(TrueClass) || value.is_a?(FalseClass)
-    return value if value.is_a?(Integer) || value.is_a?(Float) || value.is_a?(String)
-    return value.to_s if value.is_a?(Symbol)
-    return value.map { |v| sanitize_for_broadcast(v, source: source) } if value.is_a?(Array)
-
-    if value.is_a?(Hash)
-      return value.each_with_object({}) do |(k, v), h|
-        key = k.is_a?(Symbol) ? k.to_s : k
-        raise_unsafe!(k, source, context: 'Hash key') unless key.is_a?(String) || key.is_a?(Integer)
-        h[key] = sanitize_for_broadcast(v, source: source)
-      end
-    end
-
-    raise_unsafe!(value, source)
-  end
-
-  def self.raise_unsafe!(value, source, context: 'Extracted expression')
-    label = source ? "`#{source}`" : 'an extracted expression'
-    hint =
-      if defined?(ActiveRecord::Base) && value.is_a?(ActiveRecord::Base)
-        "Narrow the ERB to a specific column (e.g. `#{source || '@record'}.name`) — " \
-          'shipping the record would leak every column over ActionCable.'
-      elsif value.is_a?(Time) || value.is_a?(Date) || (defined?(ActiveSupport::TimeWithZone) && value.is_a?(ActiveSupport::TimeWithZone))
-        "Call a formatter in the template (e.g. `#{source}.iso8601` or `time_ago_in_words(#{source})`)."
-      else
-        'Convert the value to a primitive in the template ' \
-          '(String, Integer, Float, Boolean, nil, Symbol, or Array/Hash of those) before outputting it.'
-      end
-
-    raise UnsafeBroadcastValueError,
-          "[ReactiveComponent] #{context} #{label} returned a #{value.class.name}, which is not safe to broadcast. #{hint}"
-  end
-  private_class_method :raise_unsafe!
-
   def self.signal_for(component_class, record) = { 'id' => record.id, 'dom_id' => component_class.dom_id_for(record) }
+
+  # The signed stream name to hand a `presence` controller. Components get one
+  # from their wrapper; a plain element needs this.
+  def self.signed_stream(*streamables)
+    Turbo::StreamsChannel.signed_stream_name(streamables)
+  end
 
   def self.broadcast_for(component_class, record, action:)
     return unless component_class._subscribed_events.include?(action)
@@ -196,6 +170,16 @@ module ReactiveComponent
 
     def live_model_attr
       _live_model_attr
+    end
+
+    # Declares an ivar the client fills in from its presence roster, e.g.
+    #
+    #   presence :viewers
+    #   <% @viewers.each do |viewer| %>
+    #
+    # The server never evaluates it and never ships a value for it.
+    def presence(name)
+      self._presence_fields = _presence_fields | [name.to_sym]
     end
 
     def client_state(name, default: nil)
@@ -335,6 +319,9 @@ module ReactiveComponent
         # emits the bare name in the destructure for extracted chains, so don't
         # ship it and don't sanitize-raise on it.
         next if live_model_attr && ivar_name == live_model_attr.to_s
+        # Declared by `presence` — the client's roster fills this slot, and the
+        # server has nothing to evaluate.
+        next if _presence_fields.include?(ivar_name.to_sym)
 
         value = kwargs.key?(ivar_name.to_sym) ? kwargs[ivar_name.to_sym] : evaluator.evaluate("@#{ivar_name}")
         data[ivar_name] = ReactiveComponent.sanitize_for_broadcast(value, source: "@#{ivar_name}")

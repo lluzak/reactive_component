@@ -42,6 +42,7 @@ export default defineConfig({
         { label: 'Collections & Loops', link: '/collections/' },
         { label: 'Derived Entities', link: '/derived-entities/' },
         { label: 'Notify Mode', link: '/notify-mode/' },
+        { label: 'Presence', link: '/presence/' },
         { label: 'Configuration', link: '/configuration/' },
         { label: 'Troubleshooting', link: '/troubleshooting/' },
       ],
