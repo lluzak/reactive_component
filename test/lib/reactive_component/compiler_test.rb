@@ -438,4 +438,23 @@ class ReactiveComponent::CompilerTest < ActiveSupport::TestCase
     assert_predicate status, :success?, "Compiled template threw at runtime:\n#{stdout}\n#{stderr}"
     assert_match(/^OK \d+/, stdout)
   end
+
+  test 'a const travels with the compiled template, not with the payload' do
+    compiled = ConstBadgeComponent.compiled_data
+    key, html = compiled[:const_values].sole
+
+    assert_equal '<svg class="badge-icon"><use href="#star"></use></svg>', html
+    assert_includes compiled[:js_body], "const _const = #{JSON.generate(compiled[:const_values])};"
+    assert_includes compiled[:js_body], "_buf += _const.#{key};"
+    assert_empty compiled[:expressions].values.grep(/badge_icon/)
+  end
+
+  test 'a payload carries no field for a const' do
+    sender = Contact.create!(name: 'Alice', email: 'alice@example.com')
+    message = Message.create!(subject: 'Hello', body: 'Hi', sender:, recipient: sender, label: 'inbox')
+
+    data = ConstBadgeComponent.build_data(message)
+
+    assert_empty data.keys.grep(/\Ac[0-9a-f]{8}\z/)
+  end
 end

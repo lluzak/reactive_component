@@ -87,4 +87,24 @@ class ReactiveComponent::TranspilerTest < ActiveSupport::TestCase
 
     assert_includes js, %(_buf += "<p title=\\"it's \\\\\\"q\\\\\\"\\">a</p>";)
   end
+
+  test 'const holds server-rendered HTML in the template instead of the payload' do
+    js, extraction = transpile('<p><%= const(badge_icon) %></p>')
+
+    key = extraction[:const_expressions].keys.sole
+
+    assert_includes js, "_buf += _const.#{key};"
+    assert_equal 'badge_icon', extraction[:const_expressions][key]
+    assert_empty extraction[:expressions]
+  end
+
+  test 'const refuses anything that reads a loop variable' do
+    error = assert_raises(ReactiveComponent::CompileError) do
+      transpile(<<~ERB)
+        <% @labels.each do |label| %><%= const(label_icon(label)) %><% end %>
+      ERB
+    end
+
+    assert_match(/const\(label_icon\(label\)\).*not the same on every render/, error.message)
+  end
 end
